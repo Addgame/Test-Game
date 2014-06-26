@@ -77,6 +77,8 @@ class DataHandler():
                 player.respawn()
             elif packet_type == "launch_projectile":
                 player = self.server.name_to_player(protocol.name)
+                if player.movement["dead"]:
+                    return
                 if packet["data"][0][0] - player.rect.x > 0:
                     x_factor = 1
                 else:

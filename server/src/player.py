@@ -4,7 +4,8 @@ class PlayerClass(pygame.sprite.Sprite):
     def __init__(self, server, location, name):
         pygame.sprite.Sprite.__init__(self)
         self.server = server
-        self.rect = pygame.Rect(location, (31, 64))
+        self.size = (31, 64)
+        self.rect = pygame.Rect(location, self.size)
         self.spawnpoint = [0,0]
         self.name = name
         self.movement = {"left":False, "right":False, "jump":False, "crouch":False, "sprint":False, "speed":5, "dead":False}
@@ -117,8 +118,9 @@ class PlayerClass(pygame.sprite.Sprite):
     def die(self):
         self.set_all_movement(False)
         self.lock_controls = True
-        self.rect.x -= self.rect.width #might not work with new textures
-        self.rect.y += 32 #same ^^
+        self.rect.x -= self.rect.height/2
+        self.rect.y += (self.rect.height - self.rect.width)
+        self.rect.size = (self.size[1], self.size[0])
         #self.reset_fall()
         self.movement["dead"] = True
         self.server.network_data_handler.send_packet(self.server.network_factory.protocols[self.name], "death")
@@ -130,10 +132,8 @@ class PlayerClass(pygame.sprite.Sprite):
         self.health = 200
         self.server.network_data_handler.send_packet_all("player_data_health", self.name, self.health)
         self.reset_fall()
-        self.rect.x = self.spawnpoint[0]
-        self.rect.y = self.spawnpoint[1]
-        #self.rect.x += self.rect.width #These ones too ^^^^
-        #self.rect.y -= self.rect.width #Even this one
+        self.rect.topleft = self.spawnpoint
+        self.rect.size = self.size
         self.movement["dead"] = False
         self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
         self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])

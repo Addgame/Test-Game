@@ -56,6 +56,9 @@ class ServerClass():
                     self.terrain_generator.simple_random_gen()
                 elif event.key == pygame.K_6:
                     ProjectileClass(self, "missile", [30,2], [0,0])
+                elif event.key == pygame.K_7:
+                    for player in self.players:
+                        player.take_damage(10, 'magic')
             elif event.type == pygame.QUIT:
                 self.quit()
     def log(self, message, type = "INFO"):
