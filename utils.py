@@ -1,0 +1,16 @@
+class Toggle():
+    def __init__(self, value = True):
+        if isinstance(value, bool):
+            self.value = value
+        else:
+            self.value = True
+    def toggle(self):
+        if self.value:
+            self.value = False
+        else:
+            self.value = True
+    def set(self, value):
+        if isinstance(value, bool):
+            self.value = value
+    def get(self):
+        return self.value
