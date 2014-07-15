@@ -18,6 +18,8 @@ class ServerClass():
         except:
             self.log_file = open("..\\data\\server_log.txt", 'w')
         self.log("Game Server Started!")
+        self.FPS = 60
+        self.timer = 0
         self.identifier_generator = IdentifierGeneratorClass(self)
         self.players = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
@@ -30,15 +32,18 @@ class ServerClass():
         factory = GameServerFactory(self)
         self.network_listening_port = reactor.listenTCP(int(port), factory)
         self.network_factory = factory
-        reactor.callLater(1/30, self.game_loop)
-        self.clock.tick(30)
+        reactor.callLater(1/self.FPS, self.game_loop)
+        self.clock.tick(self.FPS)
         reactor.run()
     def game_loop(self):
         self.debug_loop()
-        self.update_players()
-        self.update_projectiles()
-        reactor.callLater(1/30, self.game_loop)
-        self.clock.tick(30)
+        if self.timer == 2:
+            self.update_players()
+            self.update_projectiles()
+            self.timer = 0
+        self.timer += 1
+        reactor.callLater(1/self.FPS, self.game_loop)
+        self.clock.tick(self.FPS)
     def debug_loop(self):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -99,4 +104,7 @@ class BlockHoldingClass():
 if __name__ == "__main__":
     pygame.init()
     server = ServerClass()
-    server.start_server(sys.argv[1])
+    try:
+        server.start_server(sys.argv[1])
+    except:
+        server.start_server(8007)
