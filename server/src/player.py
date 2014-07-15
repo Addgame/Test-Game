@@ -1,4 +1,5 @@
 import pygame
+import items
 
 class PlayerClass(pygame.sprite.Sprite):
     def __init__(self, server, location, name):
@@ -29,7 +30,7 @@ class PlayerClass(pygame.sprite.Sprite):
         acceleration = 9.8
         self.fall_length += 1
         #return 4
-        time = 1/self.server.clock.get_fps()       
+        time = 1./30
         fall = self.velocity[1] * time + (.5) * acceleration * (time ** 2) 
         self.velocity[1] = fall / time
         #print("BEFORE: ",fall)
@@ -139,17 +140,20 @@ class PlayerClass(pygame.sprite.Sprite):
         self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
     def place_block(self):
         block = self.get_held_block() #TODO: Change with inventory
+        if not isinstance(block, BaseItemClass.BlockClass):
+            return False
         block.place(self)
         blocks.remove(block)
         if pygame.sprite.spritecollide(block, blocks, False) != [] or \
             pygame.sprite.spritecollide(block, players, False) != []:
                 block.kill()
-                return
+                return False
         #TODO: After inventory, place block -1
         blocks.add(block)
+        return True
     def break_block(self):
         pass
-    def get_held_block(self):
+    def get_held_item(self):
         return BaseItemClass.BlockClass('spike',)
     def update_movement_input(self, movement_dict):
         update_location = False
