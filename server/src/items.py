@@ -5,7 +5,7 @@ class BaseItemClass():
     class ItemClass():
         pass
     class BlockClass(pygame.sprite.Sprite):
-        def __init__(self, name, location, blocks):
+        def __init__(self, name, blocks, location = [0, 0]):
             pygame.sprite.Sprite.__init__(self)
             self.server = blocks.server
             self.solidity = block_data[name]["solidity"]
