@@ -9,6 +9,10 @@ class GraphicsEngineClass():
         self.load_hud_textures()
         self.load_block_textures()
         self.load_player_skins("_all")
+        self.fonts = { \
+            "corbel-15": pygame.font.Font(pygame.font.match_font("corbel"), 15), \
+            "corbel-25": pygame.font.Font(pygame.font.match_font("corbel"), 25), \
+            }
         if screen != None:
             size = screen.get_size()
         else:
@@ -21,9 +25,16 @@ class GraphicsEngineClass():
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
+        self.connection_lost_text = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
     def draw_screen(self):
         if self.client.game_state == "ingame":
             self.draw_game_screen()
+        elif self.client.game_state == "connection_lost":
+            self.screen.fill(BLACK)
+            self.screen.blit(self.connection_lost_text, self.connection_lost_text.get_rect( \
+                center=(self.screen.get_rect().centerx, self.screen.get_rect().centery-10)))
+            pygame.display.update()
+            self.client.clock.tick(float(self.client.options["fps"]))
     def draw_game_screen(self):
         self.draw_background()
         self.draw_blocks()

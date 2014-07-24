@@ -24,10 +24,10 @@ class ClientClass():
         self.players = {}
         self.projectiles = {}
         self.projectile_cooldown = 0
-        self.message_group = MessageGroupClass(self)
         self.sound = SoundEngineClass(self)
         self.graphics = GraphicsEngineClass(self, screen)
-        self.blocks = []       
+        self.message_group = MessageGroupClass(self)
+        self.blocks = []
         self.cursor = CursorClass(self)
         self.network_data_handler = DataHandler(self)
         self.network_connector = None
@@ -46,6 +46,7 @@ class ClientClass():
         self.graphics.draw_screen()
         reactor.callLater(1/float(self.options["fps"]), self.game_loop)
     def add_player(self, name):
+        #self.players[name] = ClientPlayerClass(name)
         self.players[name] = {"images":None, "current_img":None, "movement":{"left":False,"right":False,"jump":False, "crouch":False, \
             "dead":False, "sprint":False}, "location":[0,0], "health":200}
         self.graphics.load_player_skins(name)
@@ -170,7 +171,7 @@ class ClientClass():
                     elif event.button == 11:
                         self.cursor.fine_adjust.toggle()
                 elif event.type == pygame.JOYBUTTONUP:
-                    if event.button == 5:                    
+                    if event.button == 5:
                         self.set_crouch(False)
                     elif event.button == 4:
                         self.set_sprint(False)
@@ -233,7 +234,7 @@ class MessageGroupClass():
         self.client = client
         self.message_limit = int(self.client.options["message_limit"])
         self.messages = []
-        self.fonts = {"corbel-15": pygame.font.Font(pygame.font.match_font("corbel"), 15)}
+        self.fonts = self.client.graphics.fonts
         self.show_all = Toggle(False)
         self.update_display = False
         self.update_location = False
@@ -322,5 +323,9 @@ class CursorClass():
 
 if __name__ == '__main__':
     pygame.init()
-    game_client = ClientClass(sys.argv[1], "multiplayer")
-    game_client.start_game_connection(sys.argv[2], sys.argv[3])
+    try:
+        game_client = ClientClass(sys.argv[1], "multiplayer")
+        game_client.start_game_connection(sys.argv[2], sys.argv[3])
+    except:
+        game_client = ClientClass("Addgame", "multiplayer")
+        game_client.start_game_connection('localhost', 8007)

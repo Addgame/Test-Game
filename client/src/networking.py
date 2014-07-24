@@ -34,7 +34,7 @@ class GameClientFactory(ClientFactory):
             self.client.log("REASON: " + str(reason), "DEBUG")
         self.client.connected = False
         self.client.game_state = "connection_lost"
-        
+
 class DataHandler():
     def __init__(self, client):
         self.client = client
