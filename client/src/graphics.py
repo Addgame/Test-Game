@@ -53,7 +53,7 @@ class GraphicsEngineClass():
             self.update_player_skins(name)
             if name != self.client.player_name:
                 self.screen.blit(self.client.players[name]["current_img"], self.client.players[name]["location"])
-        self.screen.blit(self.client.players[self.client.player_name]["current_img"], self.client.players[self.client.player_name]["location"])
+        self.screen.blit(self.client.players[self.client.player_name]["current_img"], self.screen.get_rect().center - 15)
     def draw_background(self):
         self.screen.fill(WHITE)
     def draw_messages(self):

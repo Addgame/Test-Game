@@ -101,11 +101,11 @@ class ClientClass():
                     elif self.input_mode == 'controller':
                         self.set_input_mode('keyboard')
                 elif event.key == pygame.K_2:
-                    pass #self.take_damage(10, 'magic')
-                elif event.key == pygame.K_3:
                     self.graphics.create_display([640, 480])
-                elif event.key == pygame.K_4:
+                elif event.key == pygame.K_3:
                     self.graphics.create_display([1366, 768])
+                elif event.key == pygame.K_4:
+                    self.graphics.create_display([1920, 1017])
                 elif event.key == pygame.K_5:
                     self.respawn()
                 elif event.key == pygame.K_6:
