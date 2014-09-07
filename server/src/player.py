@@ -58,9 +58,9 @@ class PlayerClass(pygame.sprite.Sprite):
             elif self.movement["sprint"] == True:
                 speed[0] = int(speed[0] * 1.5)
             self.rect.x += speed[0]
-            collisions = pygame.sprite.spritecollide(self, self.server.blocks.solid, False) #TODO: Change over to rect collisions
+            collisions = self.check_collisions("solid")
             for cblock in collisions:
-                if self.server.blocks.damaging in cblock.groups(): #TODO:Move and improve damage block code!!
+                if self.server.maps.damaging in cblock.groups(): #TODO:Move and improve damage block code!!
                     if self.damage_lockout['block'] <= 0: 
                         self.take_damage(blockData[cblock.name]["extra"]["damage"], cblock.name)
                         self.damage_lockout['block'] = 15
@@ -82,7 +82,7 @@ class PlayerClass(pygame.sprite.Sprite):
             self.rect.y += speed[1]
             if self.rect.y > 832: #Full body length beyond 768 tall screen
                 self.rect.y = -64
-            collisions = pygame.sprite.spritecollide(self, self.server.blocks.solid, False)
+            collisions = self.check_collisions("solid")
             for cblock in collisions:
                 if speed[1] > 0:
                     self.jump_length = 0
@@ -107,6 +107,23 @@ class PlayerClass(pygame.sprite.Sprite):
                     self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
             if self.rect.center != temp_rect_center:
                 self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
+    def check_collisions(self, type):
+        left = self.rect.left >> 9
+        right = self.rect.right >> 9
+        top = self.rect.top >> 9
+        bottom = self.rect.bottom >> 9
+        map = MapClass()
+        for x in range(left, right + 1):
+            for y in range(top, bottom + 1):
+                map = self.server.maps.combine(map, self.server.maps.loc_to_map((x, y)))
+        if type == "all":
+            return pygame.sprite.spritecollide(self, map.all, False)
+        elif type == "solid":
+            return pygame.sprite.spritecollide(self, map.solid, False)
+        elif type == "nonsolid":
+            return pygame.sprite.spritecollide(self, map.nonsolid, False)
+        elif type == "damaging":
+            return pygame.sprite.spritecollide(self, map.damaging, False)
     def take_damage(self, amount, kind):
         self.health -= amount #TODO: Adjust damage for items/skills/potions
         self.last_damage = kind
@@ -189,7 +206,7 @@ class PlayerClass(pygame.sprite.Sprite):
         elif value == False and self.movement["crouch"] == True:
             self.rect.height += 32
             self.rect.y -= 32
-            if pygame.sprite.spritecollide(self, self.server.blocks.all, False) != []:
+            if self.check_collisions("all") != []:
                 self.rect.height -= 32
                 self.rect.y += 32
                 self.attempt_stand = True

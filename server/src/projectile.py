@@ -21,7 +21,7 @@ class ProjectileClass(pygame.sprite.Sprite):
         player_collisions = pygame.sprite.spritecollide(self, self.server.players, False)
         for player in player_collisions:
             player.take_damage(projectile_data[self.type]["damage"], self.type)
-        block_collisions = pygame.sprite.spritecollide(self, self.server.blocks.solid, False)
+        block_collisions = pygame.sprite.spritecollide(self, self.server.maps.solid, False)
         for block in block_collisions:
             pass
         if player_collisions != []:
