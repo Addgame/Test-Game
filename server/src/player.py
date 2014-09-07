@@ -19,7 +19,7 @@ class PlayerClass(pygame.sprite.Sprite):
         self.fall_damage = 0
         self.velocity = [0,0]
         self.lock_controls = False
-        self.last_damage = None
+        self.last_damage = "nothing"
         self.damage_lockout = {'mob':0,'block':0}
         self.inventory = None #TODO: Add inventory
         self.cursor_pos = [0,0]
@@ -110,7 +110,7 @@ class PlayerClass(pygame.sprite.Sprite):
     def take_damage(self, amount, kind):
         self.health -= amount #TODO: Adjust damage for items/skills/potions
         self.last_damage = kind
-        print(self.health)
+        print(self.name + ": " + self.health)
         self.server.network_data_handler.send_packet_all("player_data_health", self.name, self.health)
         if self.health <= 0:
             self.die()

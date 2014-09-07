@@ -32,8 +32,8 @@ class ServerClass():
         factory = GameServerFactory(self)
         self.network_listening_port = reactor.listenTCP(int(port), factory)
         self.network_factory = factory
-        reactor.callLater(1/self.FPS, self.game_loop)
-        self.clock.tick(self.FPS)
+        reactor.callLater(1./self.FPS, self.game_loop)
+        self.clock.tick()#self.FPS)
         reactor.run()
     def game_loop(self):
         self.debug_loop()
@@ -42,8 +42,8 @@ class ServerClass():
             self.update_projectiles()
             self.timer = 0
         self.timer += 1
-        reactor.callLater(1/self.FPS, self.game_loop)
-        self.clock.tick(self.FPS)
+        reactor.callLater(1./self.FPS, self.game_loop)
+        self.clock.tick()#self.FPS)
     def debug_loop(self):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
