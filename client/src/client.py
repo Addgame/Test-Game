@@ -27,6 +27,7 @@ class ClientClass():
         self.sound = SoundEngineClass(self)
         self.graphics = GraphicsEngineClass(self, screen)
         self.message_group = MessageGroupClass(self)
+        self.chat_box = ChatBoxClass(self)
         self.blocks = []
         self.cursor = CursorClass(self)
         self.network_data_handler = DataHandler(self)
@@ -92,9 +93,21 @@ class ClientClass():
             self.log("Input mode set to keyboard")
     def get_input(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:#Common event checks
+            if event.type == pygame.QUIT:
                 self.quit()
-            elif event.type == pygame.KEYDOWN:
+            elif event.type == pygame.VIDEORESIZE:
+                pass #Add manual resize ability
+            elif event.type == pygame.JOYHATMOTION:
+                if event.value == (0, 1):
+                    self.change_input_type()
+            else:
+                if self.chat_box.show.get():
+                    self.get_chat_input(event)
+                else:
+                    self.get_game_input(event)
+    def get_game_input(self, event):
+        if True:
+            if event.type == pygame.KEYDOWN: #Common event checks
                 if event.key == pygame.K_1:
                     if self.input_mode == 'keyboard' and self.controller_count:
                         self.set_input_mode("controller")
@@ -118,14 +131,9 @@ class ClientClass():
                     self.graphics.load_block_textures()
                     self.graphics.load_player_skins("_all")
                 elif event.key == pygame.K_t:
-                    self.message_group.show_all.toggle()
+                    self.change_input_type()
                 elif event.key == pygame.K_ESCAPE:
-                    if self.message_group.show_all.get():
-                        self.message_group.show_all.set(False)
-                    else:
-                        self.quit()
-            elif event.type == pygame.VIDEORESIZE:
-                pass #TODO: Add manual resize ability
+                    self.quit()
             if self.input_mode == 'keyboard': #Keyboard only event checks
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_w or event.key == pygame.K_SPACE:
@@ -175,9 +183,6 @@ class ClientClass():
                         self.set_crouch(False)
                     elif event.button == 4:
                         self.set_sprint(False)
-                elif event.type == pygame.JOYHATMOTION:
-                    if event.value == (0, 1):
-                        self.message_group.show_all.toggle()
         if self.input_mode == 'keyboard': #Keyboard only non-event checks
             pass
         elif self.input_mode == 'controller': #Controller only non-event checks
@@ -201,6 +206,57 @@ class ClientClass():
         #if #SET UP TO SEND ALL MOVEMENT UPDATES AT ONCE  #Common non-event checks
         if self.projectile_cooldown > 0:
             self.projectile_cooldown -= 1
+    def get_chat_input(self, event):
+        changed = False
+        if event.type == pygame.KEYDOWN:
+            #print("BEFORE:  " + str(self.chat_box.pos) + "  " + self.chat_box.text)
+            if event.key == pygame.K_ESCAPE:
+                self.chat_box.text = ""
+                self.chat_box.pos = 0
+                changed = True
+                self.change_input_type()
+            elif event.key == pygame.K_BACKSPACE:
+                if self.chat_box.pos:
+                    self.chat_box.text = self.chat_box.text[:self.chat_box.pos - 1] + self.chat_box.text[self.chat_box.pos:]
+                    self.chat_box.pos -= 1
+                    changed = True
+            elif event.key == pygame.K_DELETE:
+                if self.chat_box.pos < len(self.chat_box.text):
+                    self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + self.chat_box.text[self.chat_box.pos + 1:]
+                    changed = True
+            elif event.key == pygame.K_LEFT:
+                if self.chat_box.pos:
+                    self.chat_box.pos -= 1
+                    changed = True
+            elif event.key == pygame.K_RIGHT:
+                if self.chat_box.pos < len(self.chat_box.text):
+                    self.chat_box.pos += 1
+                    changed = True
+            elif event.key == pygame.K_HOME:
+                self.chat_box.pos = 0
+                changed = True
+            elif event.key == pygame.K_END:
+                self.chat_box.pos = len(self.chat_box.text)
+                changed = True
+            elif event.key == pygame.K_RETURN:
+                self.chat_box.send()
+            elif event.key == pygame.K_RSHIFT or event.key == pygame.K_LSHIFT:
+                pass
+            else:
+                character = str(event.unicode)
+                self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + character + self.chat_box.text[self.chat_box.pos:]
+                self.chat_box.pos += 1
+                changed = True
+            if changed:
+                self.chat_box.make_image()
+            #print("AFTER:  " + str(self.chat_box.pos) + "  " + self.chat_box.text)
+    def change_input_type(self, set = None):
+        if set == None:
+            self.message_group.show_all.toggle()
+            self.chat_box.show.toggle()
+        else:
+            self.message_group.show_all.set(set)
+            self.chat_box.show.set(set)
     def set_move(self, value, direction):
         self.network_data_handler.send_packet("player_movement_input", {direction: value})
     def set_crouch(self, value):
@@ -217,11 +273,23 @@ class ClientClass():
         self.network_data_handler.send_packet("respawn")
 
 class MessageClass(): #DO BETTER REWRITE OF MESSAGES
-    def __init__(self, text, type = "broadcast", color = BLACK, size = 15, font = 'corbel'):
+    def __init__(self, text, color = BLACK, size = 15, font = 'corbel'):
         self.text = text
+        self.color = color
+        if self.text.find("%y") > 0:
+            self.color = YELLOW
+            self.text = self.text.replace("%y", "")
+        elif self.text.find("%b") > 0:
+            self.color = BLUE
+            self.text = self.text.replace("%b", "")
+        elif self.text.find("%r") > 0:
+            self.color = RED
+            self.text = self.text.replace("%r", "")
+        elif self.text.find("%g") > 0:
+            self.color = GREEN
+            self.text = self.text.replace("%g", "")
         self.time = -1
         self.font = font + '-' + str(size)
-        self.color = color
         self.image = None
         self.draw_location = None
     def draw(self, screen, location = None):
@@ -260,7 +328,7 @@ class MessageGroupClass():
                     message.time -= 1
                     need_update = True
                 if self.update_location:
-                    message.draw_location[1] = (self.client.graphics.screen.get_height() - 30) - (25*((len(self.messages)-1)-self.messages.index(message)))
+                    message.draw_location[1] = (self.client.graphics.screen.get_height() - 55) - (25*((len(self.messages)-1)-self.messages.index(message)))
             if need_update == False:
                 self.update_display = False
             if self.update_location == True:
@@ -273,6 +341,29 @@ class MessageGroupClass():
         for message in self.messages:
             if self.show_all.get() or message.time > -1:
                 message.draw(self.client.graphics.screen)
+
+class ChatBoxClass():
+    def __init__(self, client):
+        self.client = client
+        self.show = Toggle(False)
+        self.text = ""
+        self.pos = 0
+        self.location = [5, self.client.graphics.screen.get_height() - 30]
+        self.image = None
+        self.make_image()
+    def make_image(self):
+        color = BLACK
+        value = self.text[:self.pos] + "|" + self.text[self.pos:]
+        self.image = self.client.graphics.fonts["corbel-15"].render("> " + value, True, color)
+    def send(self):
+        self.client.network_data_handler.send_packet("player_message", self.text)
+        self.text = ""
+        self.pos = 0
+        self.make_image()
+        self.client.change_input_type()
+    def draw(self):
+        if self.show.get():
+            self.client.graphics.screen.blit(self.image, self.location)
 
 class CursorClass():
     def __init__(self, client):

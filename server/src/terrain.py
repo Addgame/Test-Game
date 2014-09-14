@@ -13,4 +13,17 @@ class TerrainEngine():
             block.group(False)
         self.server.log("Simple Random Generation Performed")
         self.server.network_data_handler.send_packet_all("blocks", self.server.blocks.convert_list())
-        
+    def random_gen(self):
+        self.server.blocks.reset()
+        for x in range(42):
+            y = random.randint(4,23)
+            if y < 10:
+                type = random.choice(["dirt","grass"])
+            elif y > 10:
+                type = random.choice(["dirt","stone"])
+            else:
+                type = "test_block"
+            block = BaseItemClass.BlockClass(type, self.server.blocks, [x * 32,y * 32])
+            block.group(False)
+        self.server.log("Random Generation Performed")
+        self.server.network_data_handler.send_packet_all("blocks", self.server.blocks.convert_list())    

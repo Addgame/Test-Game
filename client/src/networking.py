@@ -102,7 +102,7 @@ class DataHandler():
                     print("RECEIVED DEATH")
                 #self.client.players[self.client.player_name]["movement"]["dead"] = True
                 self.client.sound.sounds["death"].play()
-            elif packet_type == "message":
+            elif packet_type == "chat_message":
                 message = MessageClass(packet["data"][0])
                 self.client.message_group.add_message(message)
     def send_packet(self, type, *data):

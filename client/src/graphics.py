@@ -23,6 +23,7 @@ class GraphicsEngineClass():
         self.screen = pygame.display.set_mode(size)
         pygame.display.set_caption("My Game v.0.0.4")
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
+        self.alpha_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
         self.connection_lost_text = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
@@ -34,17 +35,18 @@ class GraphicsEngineClass():
             self.screen.blit(self.connection_lost_text, self.connection_lost_text.get_rect( \
                 center=(self.screen.get_rect().centerx, self.screen.get_rect().centery-10)))
             pygame.display.update()
-            self.client.clock.tick(float(self.client.options["fps"]))
+            self.client.clock.tick()#float(self.client.options["fps"]))
     def draw_game_screen(self):
         self.draw_background()
         self.draw_blocks()
         self.draw_players()
         self.draw_projectiles()
         self.draw_messages()
+        self.draw_chat_box()
         self.draw_hud()
         self.draw_cursor()
         pygame.display.update()
-        self.client.clock.tick(float(self.client.options["fps"]))
+        self.client.clock.tick()#float(self.client.options["fps"]))
     def draw_blocks(self):
         for block in self.client.blocks:
             self.screen.blit(self.block_textures[block["name"]], block["location"])
@@ -59,6 +61,8 @@ class GraphicsEngineClass():
     def draw_messages(self):
         self.client.message_group.update()
         self.client.message_group.draw()
+    def draw_chat_box(self):
+        self.client.chat_box.draw()
     def draw_cursor(self):
         self.client.cursor.draw()
     def draw_hud(self):
@@ -101,7 +105,7 @@ class GraphicsEngineClass():
             img_name += "Dead"
         self.client.players[name]["current_img"] = self.client.players[name]["images"][img_name]
     def load_block_textures(self):
-        self.block_textures = {"dirt": None, "grass": None, "spike": None}
+        self.block_textures = {"dirt": None, "grass": None, "spike": None, "stone": None, "test_block": None}
         for key in self.block_textures:
             try:
                 self.block_textures[key] = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\blocks\\" + key + ".png")

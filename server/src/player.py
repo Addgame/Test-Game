@@ -110,7 +110,7 @@ class PlayerClass(pygame.sprite.Sprite):
     def take_damage(self, amount, kind):
         self.health -= amount #TODO: Adjust damage for items/skills/potions
         self.last_damage = kind
-        print(self.name + ": " + self.health)
+        print(self.name + ": " + str(self.health))
         self.server.network_data_handler.send_packet_all("player_data_health", self.name, self.health)
         if self.health <= 0:
             self.die()

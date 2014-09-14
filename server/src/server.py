@@ -60,8 +60,10 @@ class ServerClass():
                 elif event.key == pygame.K_5:
                     self.terrain_generator.simple_random_gen()
                 elif event.key == pygame.K_6:
-                    ProjectileClass(self, "missile", [30,2], [0,0])
+                    self.terrain_generator.random_gen()
                 elif event.key == pygame.K_7:
+                    ProjectileClass(self, "missile", [30,2], [0,0])
+                elif event.key == pygame.K_8:
                     for player in self.players:
                         player.take_damage(10, 'magic')
             elif event.type == pygame.QUIT:
@@ -84,6 +86,7 @@ class ServerClass():
             projectile.update()
     def quit(self):
         self.network_listening_port.stopListening()
+        reactor.stop()
 
 class BlockHoldingClass():
     def __init__(self, server):

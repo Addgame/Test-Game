@@ -84,6 +84,13 @@ class DataHandler():
                 else:
                     x_factor = -1
                 ProjectileClass(self.server, "missile", [30 * x_factor, 1], [player.rect.centerx + 17 * x_factor, player.rect.centery])
+            elif packet_type == "player_message":
+                packet["type"] = "chat_message"
+                if packet["data"][0] == "":
+                    return
+                packet["data"][0] = "<" + protocol.name + "> " + packet["data"][0]
+                for protocol in self.server.network_factory.protocols.itervalues():
+                    self.send_data(protocol, packet)
     def send_packet_all(self, type, *data):
         for protocol in self.server.network_factory.protocols.itervalues():
             self.send_packet_base(protocol, type, data)
