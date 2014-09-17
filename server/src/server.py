@@ -11,7 +11,7 @@ from projectile import *
 class ServerClass():
     def __init__(self, debug = False):
         self.debug = debug
-        pygame.display.set_mode((50,50))
+        pygame.display.set_mode((150,50))
         self.clock = pygame.time.Clock()
         try:
             self.log_file = open("..\\data\\server_log.txt", 'a')
@@ -19,6 +19,7 @@ class ServerClass():
             self.log_file = open("..\\data\\server_log.txt", 'w')
         self.log("Game Server Started!")
         self.FPS = 60
+        self.max_player_message_length = 75
         self.timer = 0
         self.identifier_generator = IdentifierGeneratorClass(self)
         self.players = pygame.sprite.Group()

@@ -88,6 +88,8 @@ class DataHandler():
                 packet["type"] = "chat_message"
                 if packet["data"][0] == "":
                     return
+                if len(packet["data"][0]) > self.server.max_player_message_length:
+                    packet["data"][0] = packet["data"][0][:self.server.max_player_message_length]
                 packet["data"][0] = "<" + protocol.name + "> " + packet["data"][0]
                 for protocol in self.server.network_factory.protocols.itervalues():
                     self.send_data(protocol, packet)

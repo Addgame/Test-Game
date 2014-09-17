@@ -243,10 +243,11 @@ class ClientClass():
             elif event.key == pygame.K_RSHIFT or event.key == pygame.K_LSHIFT:
                 pass
             else:
-                character = str(event.unicode)
-                self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + character + self.chat_box.text[self.chat_box.pos:]
-                self.chat_box.pos += 1
-                changed = True
+                if len(self.chat_box.text) < self.chat_box.char_limit:
+                    character = str(event.unicode)
+                    self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + character + self.chat_box.text[self.chat_box.pos:]
+                    self.chat_box.pos += 1
+                    changed = True
             if changed:
                 self.chat_box.make_image()
             #print("AFTER:  " + str(self.chat_box.pos) + "  " + self.chat_box.text)
@@ -254,9 +255,17 @@ class ClientClass():
         if set == None:
             self.message_group.show_all.toggle()
             self.chat_box.show.toggle()
+            if self.chat_box.show.get():
+                pygame.mouse.set_visible(True)
+            else:
+                pygame.mouse.set_visible(False)
         else:
             self.message_group.show_all.set(set)
             self.chat_box.show.set(set)
+            if self.chat_box.show.get():
+                pygame.mouse.set_visible(True)
+            else:
+                pygame.mouse.set_visible(False)
     def set_move(self, value, direction):
         self.network_data_handler.send_packet("player_movement_input", {direction: value})
     def set_crouch(self, value):
@@ -348,9 +357,13 @@ class ChatBoxClass():
         self.show = Toggle(False)
         self.text = ""
         self.pos = 0
-        self.location = [5, self.client.graphics.screen.get_height() - 30]
+        self.location = []
+        self.char_limit = 75
         self.image = None
+        self.update_location()
         self.make_image()
+    def update_location(self):
+        self.location = [5, self.client.graphics.screen.get_height() - 30]
     def make_image(self):
         color = BLACK
         value = self.text[:self.pos] + "|" + self.text[self.pos:]

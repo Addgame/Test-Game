@@ -27,6 +27,12 @@ class GraphicsEngineClass():
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
         self.connection_lost_text = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
+        try:
+            self.client.message_group.update_display = True
+            self.client.message_group.update_location = True
+            self.client.chat_box.update_location()
+        except: #MessageGroup instance not created yet
+            pass
     def draw_screen(self):
         if self.client.game_state == "ingame":
             self.draw_game_screen()
