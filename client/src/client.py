@@ -1,6 +1,7 @@
 import pygame, sys, datetime, os
 from sounds import *
 from graphics import *
+from clientobjects import *
 from networking import *
 from utils import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -9,6 +10,7 @@ class ClientClass():
     def __init__(self, name, server_type, screen = None, debug = False):
         self.debug = debug
         self.player_name = name
+        self.player = None
         self.server_type = server_type
         self.game_state = "login"
         self.load_options()
@@ -21,7 +23,7 @@ class ClientClass():
         self.set_input_mode("keyboard") #sets to keyboard
         self.set_input_mode("controller") #attempts to set to controller if possible
         self.clock = pygame.time.Clock()
-        self.players = {}
+        self.players = ClientPlayerGroup(self)
         self.projectiles = {}
         self.projectile_cooldown = 0
         self.sound = SoundEngineClass(self)
@@ -46,11 +48,6 @@ class ClientClass():
         self.get_input()
         self.graphics.draw_screen()
         reactor.callLater(1/float(self.options["fps"]), self.game_loop)
-    def add_player(self, name):
-        #self.players[name] = ClientPlayerClass(name)
-        self.players[name] = {"images":None, "current_img":None, "movement":{"left":False,"right":False,"jump":False, "crouch":False, \
-            "dead":False, "sprint":False}, "location":[0,0], "health":200}
-        self.graphics.load_player_skins(name)
     def load_options(self):
         self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0}
         try:
@@ -104,85 +101,93 @@ class ClientClass():
                 if self.chat_box.show.get():
                     self.get_chat_input(event)
                 else:
-                    self.get_game_input(event)
-    def get_game_input(self, event):
-        if True:
-            if event.type == pygame.KEYDOWN: #Common event checks
-                if event.key == pygame.K_1:
-                    if self.input_mode == 'keyboard' and self.controller_count:
-                        self.set_input_mode("controller")
-                    elif self.input_mode == 'controller':
-                        self.set_input_mode('keyboard')
-                elif event.key == pygame.K_2:
-                    pass #self.take_damage(10, 'magic')
-                elif event.key == pygame.K_3:
-                    self.graphics.create_display([640, 480])
-                elif event.key == pygame.K_4:
-                    self.graphics.create_display([1366, 768])
-                elif event.key == pygame.K_5:
+                    self.get_game_event_input(event)
+        if not self.chat_box.show.get():
+            self.get_game_nonevent_input()
+        if self.projectile_cooldown > 0:
+            self.projectile_cooldown -= 1
+    def get_game_event_input(self, event):
+        if event.type == pygame.KEYDOWN: #Common event checks
+            if event.key == pygame.K_1:
+                if self.input_mode == 'keyboard' and self.controller_count:
+                    self.set_input_mode("controller")
+                elif self.input_mode == 'controller':
+                    self.set_input_mode('keyboard')
+            elif event.key == pygame.K_2:
+                self.graphics.create_display([640, 480])
+            elif event.key == pygame.K_3:
+                self.graphics.create_display([1366, 768])
+            elif event.key == pygame.K_4:
+                self.graphics.create_display([1920, 1080])
+            elif event.key == pygame.K_5:
+                self.respawn()
+            elif event.key == pygame.K_6:
+                self.sound.play_music()
+            elif event.key == pygame.K_7:
+                self.sound.stop_music()
+            elif event.key == pygame.K_8:
+                self.graphics.load_projectile_textures()
+                self.graphics.load_hud_textures()
+                self.graphics.load_block_textures()
+                self.graphics.load_player_skins("_all")
+            elif event.key == pygame.K_9:
+                self.graphics.create_display(self.graphics.screen.get_size())
+            elif event.key == pygame.K_0:
+                self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)
+            elif event.key == pygame.K_t:
+                self.change_input_type()
+            elif event.key == pygame.K_ESCAPE:
+                self.quit()
+        if self.input_mode == 'keyboard': #Keyboard only event checks
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_w or event.key == pygame.K_SPACE:
+                    self.set_jump(True)
+                elif event.key == pygame.K_a:
+                    self.set_move(True, 'left')
+                elif event.key == pygame.K_d:
+                    self.set_move(True, 'right')
+                elif event.key == pygame.K_LSHIFT:
+                    self.set_crouch(True)
+                elif event.key == pygame.K_LCTRL:
+                    self.set_sprint(True)
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_w or event.key == pygame.K_SPACE:
+                    self.set_jump(False)
+                elif event.key == pygame.K_a:
+                    self.set_move(False, 'left')
+                elif event.key == pygame.K_d:
+                    self.set_move(False, 'right')
+                elif event.key == pygame.K_LSHIFT:
+                    self.set_crouch(False)
+                elif event.key == pygame.K_LCTRL:
+                    self.set_sprint(False)
+            elif event.type == pygame.MOUSEMOTION:
+                self.cursor.update(event.pos[0], event.pos[1])
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    self.launch_projectile()
+                elif event.button == 3:
+                    pass #self.place_block()
+        elif self.input_mode == 'controller': #Controller only event checks
+            if event.type == pygame.JOYBUTTONDOWN:
+                if event.button == 5:
+                    self.set_crouch(True)
+                elif event.button == 4:
+                    self.set_sprint(True)
+                elif event.button == 6:
+                    self.launch_projectile()
+                elif event.button == 7:
+                    pass #self.place_block()
+                elif event.button == 3:
                     self.respawn()
-                elif event.key == pygame.K_6:
-                    self.sound.play_music()
-                elif event.key == pygame.K_7:
-                    self.sound.stop_music()
-                elif event.key == pygame.K_8:
-                    self.graphics.load_projectile_textures()
-                    self.graphics.load_hud_textures()
-                    self.graphics.load_block_textures()
-                    self.graphics.load_player_skins("_all")
-                elif event.key == pygame.K_t:
-                    self.change_input_type()
-                elif event.key == pygame.K_ESCAPE:
-                    self.quit()
-            if self.input_mode == 'keyboard': #Keyboard only event checks
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_w or event.key == pygame.K_SPACE:
-                        self.set_jump(True)
-                    elif event.key == pygame.K_a:
-                        self.set_move(True, 'left')
-                    elif event.key == pygame.K_d:
-                        self.set_move(True, 'right')
-                    elif event.key == pygame.K_LSHIFT:
-                        self.set_crouch(True)
-                    elif event.key == pygame.K_LCTRL:
-                        self.set_sprint(True)
-                elif event.type == pygame.KEYUP:
-                    if event.key == pygame.K_w or event.key == pygame.K_SPACE:
-                        self.set_jump(False)
-                    elif event.key == pygame.K_a:
-                        self.set_move(False, 'left')
-                    elif event.key == pygame.K_d:
-                        self.set_move(False, 'right')
-                    elif event.key == pygame.K_LSHIFT:
-                        self.set_crouch(False)
-                    elif event.key == pygame.K_LCTRL:
-                        self.set_sprint(False)
-                elif event.type == pygame.MOUSEMOTION:
-                    self.cursor.update(event.pos[0], event.pos[1])
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        self.launch_projectile()
-                    elif event.button == 3:
-                        pass #self.place_block()
-            elif self.input_mode == 'controller': #Controller only event checks
-                if event.type == pygame.JOYBUTTONDOWN:
-                    if event.button == 5:
-                        self.set_crouch(True)
-                    elif event.button == 4:
-                        self.set_sprint(True)
-                    elif event.button == 6:
-                        self.launch_projectile()
-                    elif event.button == 7:
-                        pass #self.place_block()
-                    elif event.button == 3:
-                        self.respawn()
-                    elif event.button == 11:
-                        self.cursor.fine_adjust.toggle()
-                elif event.type == pygame.JOYBUTTONUP:
-                    if event.button == 5:
-                        self.set_crouch(False)
-                    elif event.button == 4:
-                        self.set_sprint(False)
+                elif event.button == 11:
+                    self.cursor.fine_adjust.toggle()
+            elif event.type == pygame.JOYBUTTONUP:
+                if event.button == 5:
+                    self.set_crouch(False)
+                elif event.button == 4:
+                    self.set_sprint(False)
+    def get_game_nonevent_input(self):
         if self.input_mode == 'keyboard': #Keyboard only non-event checks
             pass
         elif self.input_mode == 'controller': #Controller only non-event checks
@@ -204,8 +209,6 @@ class ClientClass():
             righty = self.controller.get_axis(3)
             self.cursor.update(rightx, righty)
         #if #SET UP TO SEND ALL MOVEMENT UPDATES AT ONCE  #Common non-event checks
-        if self.projectile_cooldown > 0:
-            self.projectile_cooldown -= 1
     def get_chat_input(self, event):
         changed = False
         if event.type == pygame.KEYDOWN:
@@ -392,14 +395,14 @@ class CursorClass():
             self.rect.x = x_adjust
             self.rect.y = y_adjust
         elif self.client.input_mode == 'controller':
-            if x_adjust > .1 or x_adjust < -.1:
+            if x_adjust > .15 or x_adjust < -.15:
                 if self.fine_adjust.get():
                     x_change = x_adjust * self.adjust_values[0]
                 else:
                     x_change = x_adjust * self.adjust_values[1]
             else:
                 x_change = 0
-            if y_adjust > .1 or y_adjust < -.1:
+            if y_adjust > .15 or y_adjust < -.15:
                 if self.fine_adjust.get():
                     y_change = y_adjust * self.adjust_values[0]
                 else:

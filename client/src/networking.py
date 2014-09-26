@@ -47,30 +47,33 @@ class DataHandler():
         encoded = base64.b64encode(data)
         self.client.network_protocol.sendLine(encoded)
     def handle_packet(self, packet):
+        if self.client.debug:
+            self.client.log("RECEIVED PACKET: " + str(packet))
         packet_type = packet["type"]
         if self.client.game_state == "login":
             if packet_type == "login_succeed":
                 self.client.game_state = "ingame"
             elif packet_type == "login_fail":
-                pass #Make failure possible
+                self.client.log("Login Failed. Reason: " + packet["data"][0], "ERROR")
+                self.client.network_protocol.transport.loseConnection()
         elif self.client.game_state == "ingame":
             if packet_type == "player_list":
                 for name in packet["data"][0]:
-                    if name not in self.client.players:
-                        self.client.add_player(name)
+                    if name not in self.client.players.names:
+                        self.client.players.add_player(name)
                 if self.client.debug:
                     print("RECEIVED PLAYERS")
             elif packet_type == "player_data_location":
                 name = packet["data"][0]
-                self.client.players[name]["location"] = packet["data"][1]
+                self.client.players.name_to_player(name).location = packet["data"][1]
                 if self.client.debug:
                     print("RECEIVED PLAYER {} LOCATION".format(name))
             elif packet_type == "player_data_movement":
                 name = packet["data"][0]
-                self.client.players[name]["movement"] = packet["data"][1]
+                self.client.players.name_to_player(name).movement = packet["data"][1]
             elif packet_type == "player_data_health":
                 name = packet["data"][0]
-                self.client.players[name]["health"] = packet["data"][1]
+                self.client.players.name_to_player(name).health = packet["data"][1]
             elif packet_type == "new_projectile":
                 self.client.projectiles[packet["data"][0]] = packet["data"][1]
             elif packet_type == "projectile_data":
@@ -88,13 +91,12 @@ class DataHandler():
                     print("RECEIVED BLOCKS")
             elif packet_type == "player_join":
                 name = packet["data"][0]
-                if name not in self.client.players:
-                    self.client.add_player(name)
+                self.client.players.add_player(name)
                 message = MessageClass("{} has joined the server".format(name), color = BLUE)
                 self.client.message_group.add_message(message)
             elif packet_type == "player_leave":
                 name = packet["data"][0]
-                removed_player = self.client.players.pop(name)
+                self.client.players.remove_player(name)
                 message = MessageClass("{} has left the server".format(name), color = RED)
                 self.client.message_group.add_message(message)
             elif packet_type == "death":

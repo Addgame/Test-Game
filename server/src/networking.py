@@ -14,6 +14,10 @@ class GameServerProtocol(LineReceiver):
         self.valid_login = False
     def login(self, name):
         #Validate username with password here
+        if name in self.factory.protocols:
+            self.factory.data_handler.send_packet(self, "login_fail", "A player with this name is already in the game!")
+            self.transport.loseConnection()
+            return False
         self.name = name
         self.valid_login = True
         self.factory.server.network_data_handler.send_packet(self, "login_succeed")
@@ -30,6 +34,7 @@ class GameServerProtocol(LineReceiver):
 class GameServerFactory(ServerFactory):
     def __init__(self, server):
         self.server = server
+        self.data_handler = server.network_data_handler
         self.protocols = {}
     def buildProtocol(self, addr):
         self.server.log("Received connection from " + addr.host)
@@ -39,9 +44,9 @@ class GameServerFactory(ServerFactory):
         print("ADDING PLAYER")
         self.protocols[protocol.name] = protocol
         PlayerClass(self.server, [0, 0], protocol.name)
+        self.server.network_data_handler.send_packet_all("player_join", protocol.name)
         self.server.network_data_handler.send_packet(protocol, "player_list", \
             [player.name for player in self.server.players])
-        self.server.network_data_handler.send_packet_all("player_join", protocol.name)
         for player in self.server.players:
             self.server.network_data_handler.send_packet(protocol, "player_data_location", player.name, [player.rect.x, player.rect.y])
             self.server.network_data_handler.send_packet(protocol, "player_data_movement", player.name, player.movement)
