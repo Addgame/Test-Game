@@ -45,7 +45,7 @@ class GameServerFactory(ServerFactory):
         for player in self.server.players:
             self.server.network_data_handler.send_packet(protocol, "player_data_location", player.name, [player.rect.x, player.rect.y])
             self.server.network_data_handler.send_packet(protocol, "player_data_movement", player.name, player.movement)
-        self.server.network_data_handler.send_packet(protocol, "blocks", self.server.blocks.convert_list())
+        #self.server.network_data_handler.send_packet(protocol, "blocks", self.server.blocks.convert_list())
     def remove_player(self, protocol):
         self.protocols.pop(protocol.name)
         player = self.server.name_to_player(protocol.name)
@@ -84,6 +84,9 @@ class DataHandler():
                 else:
                     x_factor = -1
                 ProjectileClass(self.server, "missile", [30 * x_factor, 1], [player.rect.centerx + 17 * x_factor, player.rect.centery])
+            elif packet_type == "get_map":
+                location = tuple(packet["data"][0])
+                self.send_packet(protocol, "map", location, self.server.maps.get_map(location).convert_list())
     def send_packet_all(self, type, *data):
         for protocol in self.server.network_factory.protocols.itervalues():
             self.send_packet_base(protocol, type, data)

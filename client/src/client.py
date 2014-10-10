@@ -2,6 +2,7 @@ import pygame, sys, datetime, os
 from sounds import *
 from graphics import *
 from networking import *
+from clientobjects import *
 from utils import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -27,7 +28,7 @@ class ClientClass():
         self.sound = SoundEngineClass(self)
         self.graphics = GraphicsEngineClass(self, screen)
         self.message_group = MessageGroupClass(self)
-        self.blocks = []
+        self.maps = ClientMapGroup(self)
         self.cursor = CursorClass(self)
         self.network_data_handler = DataHandler(self)
         self.network_connector = None
@@ -113,6 +114,10 @@ class ClientClass():
                 elif event.key == pygame.K_7:
                     self.sound.stop_music()
                 elif event.key == pygame.K_8:
+                    print(self.maps.waiting_maps)
+                    for item in self.maps.maps.iteritems():
+                        print(item[1].draw_loc, item[1].blocks)
+                elif event.key == pygame.K_9:
                     self.graphics.load_projectile_textures()
                     self.graphics.load_hud_textures()
                     self.graphics.load_block_textures()

@@ -86,6 +86,9 @@ class DataHandler():
                 self.client.blocks = packet["data"][0]
                 if self.client.debug:
                     print("RECEIVED BLOCKS")
+            elif packet_type == "map":
+                location = tuple(packet["data"][0])
+                self.client.maps.receive_map(location, packet["data"][1])
             elif packet_type == "player_join":
                 name = packet["data"][0]
                 if name not in self.client.players:

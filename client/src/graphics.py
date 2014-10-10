@@ -46,14 +46,18 @@ class GraphicsEngineClass():
         pygame.display.update()
         self.client.clock.tick(float(self.client.options["fps"]))
     def draw_blocks(self):
-        for block in self.client.blocks:
-            self.screen.blit(self.block_textures[block["name"]], block["location"])
+        for x in range(0,3):
+            for y in range(0,2):
+                map = self.client.maps.get_map((x,y))
+                if map:
+                    self.screen.blit(map.image, map.draw_loc)
     def draw_players(self):
         for name in self.client.players:
             self.update_player_skins(name)
             if name != self.client.player_name:
                 self.screen.blit(self.client.players[name]["current_img"], self.client.players[name]["location"])
-        self.screen.blit(self.client.players[self.client.player_name]["current_img"], self.screen.get_rect().center - 15)
+        self.screen.blit(self.client.players[self.client.player_name]["current_img"], self.client.players[self.client.player_name]["location"])
+        #self.screen.blit(self.client.players[self.client.player_name]["current_img"], [self.screen.get_rect().centerx - 15, self.screen.get_rect().centery - 15])
     def draw_background(self):
         self.screen.fill(WHITE)
     def draw_messages(self):

@@ -64,6 +64,9 @@ class ServerClass():
                 elif event.key == pygame.K_7:
                     for player in self.players:
                         player.take_damage(10, 'magic')
+                elif event.key == pygame.K_8:
+                    for item in self.maps.maps.iteritems():
+                        print(item[1].all)
             elif event.type == pygame.QUIT:
                 self.quit()
     def log(self, message, type = "INFO"):
@@ -84,6 +87,7 @@ class ServerClass():
             projectile.update()
     def quit(self):
         self.network_listening_port.stopListening()
+        reactor.stop()
 
 class MapContainerClass():
     def __init__(self, server):
@@ -102,22 +106,23 @@ class MapContainerClass():
         map_y = location[1] >> 9
         x = location[0] - (map_x * self.map_size_x)
         y = location[1] - (map_y * self.map_size_y)
-        try:
-            return self.maps[(map_x, map_y)], (x, y) #Returns map and location in map
-        except:
-            self.create_map((map_x, map_y))
-            return self.maps[(map_x, map_y)], (x, y)
+        return self.get_map((map_x, map_y)), (x, y) #Returns map and location in map
     def loc_to_map_loc(self, location):
         map_x = location[0] >> 9
         map_y = location[1] >> 9
         x = location[0] - (map_x * self.map_size_x)
         y = location[1] - (map_y * self.map_size_y)
         return (map_x, map_y), (x, y) #Returns map_loc and location "in map"
+    def get_map(self, map_loc):
+        try:
+            return self.maps[map_loc]
+        except:
+            self.create_map(map_loc)
+            return self.maps[map_loc]
     def create_map(self, location):
-        self.maps[location] = MapClass(location)
-        self
-    def combine(self, map1, map2 = None):
-        new_map = MapClass()
+        self.maps[location] = MapClass(self.server, location)
+    def combine(self, map1, map2):
+        new_map = MapClass(self.server)
         new_map.all.add(map1.all, map2.all)
         new_map.solid.add(map1.solid, map2.solid)
         new_map.nonsolid.add(map1.nonsolid, map2.nonsolid)
@@ -125,7 +130,7 @@ class MapContainerClass():
         return new_map
     def set_block(self, block):
         map = self.loc_to_map(block.rect.topleft)[0]
-        map.add_block(block)
+        map.map_add_block(block)
     def remove_block(self, data):
         if isinstance(data, BlockClass):
             block = data
@@ -133,7 +138,8 @@ class MapContainerClass():
             map.map_remove_block(block)
 
 class MapClass(): #Each Map is a 512 by 512 area
-    def __init__(self, location = None):
+    def __init__(self, server, location = None):
+        self.server = server
         self.map_loc = location
         self.all = pygame.sprite.Group()
         self.solid = pygame.sprite.Group()
@@ -154,10 +160,10 @@ class MapClass(): #Each Map is a 512 by 512 area
     def convert_list(self):
         list = []
         for block in self.all:
-            block_dict = {"location":[block.rect.x, block.rect.y], "name":block.name}
+            block_dict = {"location":[block.rect.x, block.rect.y], "name":block.block_name}
             list.append(block_dict)
         return list
-    def add_block(self, block):
+    def map_add_block(self, block):
         self.all.add(block)
         if block.solidity == "solid":
             self.solid.add(block)
@@ -165,6 +171,7 @@ class MapClass(): #Each Map is a 512 by 512 area
             self.nonsolid.add(block)
         if block.damage != None:
             self.damaging.add(block)
+        self.server.network_data_handler.send_packet_all("map", self.map_loc, self.convert_list())
     def map_remove_block(self, block):
         self.all.remove(block)
         if block.solidity == "solid":
@@ -173,6 +180,7 @@ class MapClass(): #Each Map is a 512 by 512 area
             self.nonsolid.remove(block)
         if block.damage != None:
             self.damaging.remove(block)
+        self.server.network_data_handler.send_packet_all("map", self.map_loc, self.convert_list())
 
 if __name__ == "__main__":
     pygame.init()

@@ -1,5 +1,6 @@
 import pygame
 import items
+from server import *
 
 class PlayerClass(pygame.sprite.Sprite):
     def __init__(self, server, location, name):
@@ -60,10 +61,10 @@ class PlayerClass(pygame.sprite.Sprite):
             self.rect.x += speed[0]
             collisions = self.check_collisions("solid")
             for cblock in collisions:
-                if self.server.maps.damaging in cblock.groups(): #TODO:Move and improve damage block code!!
-                    if self.damage_lockout['block'] <= 0: 
-                        self.take_damage(blockData[cblock.name]["extra"]["damage"], cblock.name)
-                        self.damage_lockout['block'] = 15
+##                if self.server.maps.damaging in cblock.groups(): #TODO:Move and improve damage block code!!
+##                    if self.damage_lockout['block'] <= 0: 
+##                        self.take_damage(blockData[cblock.name]["extra"]["damage"], cblock.name)
+##                        self.damage_lockout['block'] = 15
                 if speed[0] > 0:
                     self.rect.right = cblock.rect.left
                 else:
@@ -112,10 +113,11 @@ class PlayerClass(pygame.sprite.Sprite):
         right = self.rect.right >> 9
         top = self.rect.top >> 9
         bottom = self.rect.bottom >> 9
-        map = MapClass()
+        map = MapClass(self.server)
+        print(left, right, top, bottom)
         for x in range(left, right + 1):
             for y in range(top, bottom + 1):
-                map = self.server.maps.combine(map, self.server.maps.loc_to_map((x, y)))
+                map = self.server.maps.combine(map, self.server.maps.get_map((x, y)))
         if type == "all":
             return pygame.sprite.spritecollide(self, map.all, False)
         elif type == "solid":

@@ -14,15 +14,16 @@ class BaseItemClass(pygame.sprite.Sprite):
             pass
 
 class BlockClass(pygame.sprite.Sprite):
-    def __init__(self, name, location):
-        pygame.sprite.Sprite(self)
+    def __init__(self, server, name, location):
+        pygame.sprite.Sprite.__init__(self)
+        self.server = server
         self.block_name = name
         self.solidity = block_data[self.block_name]["solidity"]
         self.rect = pygame.Rect(location, block_data[self.block_name]["size"])
         self.damage = block_data[self.block_name]["damage"]
         if self.damage != None:
             self.damage_rect = pygame.Rect(self.rect.x - 2, self.rect.y - 2, self.rect.width + 4, self.rect.height + 4)
-        server.blocks.set_block(self)
+        self.server.maps.set_block(self)
 
 class OLDBlockClass(pygame.sprite.Sprite):
     def __init__(self, name, maps, location = [0, 0]):
