@@ -5,7 +5,10 @@ class Toggle():
         else:
             self.value = True
     def toggle(self):
-        self.value = not self.value
+        if self.value:
+            self.value = False
+        else:
+            self.value = True
     def set(self, value):
         if isinstance(value, bool):
             self.value = value

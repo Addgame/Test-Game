@@ -1,10 +1,13 @@
 import pygame
 import items
+from server import *
+from entity import *
+from inventory import *
 
-class PlayerClass(pygame.sprite.Sprite):
+class PlayerClass(EntityClass, InventoryOwnerClass):
     def __init__(self, server, location, name):
-        pygame.sprite.Sprite.__init__(self)
-        self.server = server
+        EntityClass.__init__(self, server)
+        InventoryOwnerClass.__init__(self, "player")
         self.size = (31, 64)
         self.rect = pygame.Rect(location, self.size)
         self.spawnpoint = [0,0]
@@ -21,18 +24,23 @@ class PlayerClass(pygame.sprite.Sprite):
         self.lock_controls = False
         self.last_damage = "nothing"
         self.damage_lockout = {'mob':0,'block':0}
-        self.inventory = None #TODO: Add inventory
-        self.cursor_pos = [0,0]
+        self.inventory = PlayerInventoryClass(self.server, self, 40, 10, 9, 0)
+        #self.cursor_pos = [0,0]
         self.server.players.add(self)
+    def save(self):
+        pass
     def convert_dict(self):
-        return {"movement": self.movement, "location": [self.rect.x, self.rect.y], "health": self.health}
+        return {"movement": self.movement, "location": [self.rect.x, self.rect.y], "health": self.health, "inventory": self.inventory.convert_dict()}
+    def get_protocol(self):
+        return self.server.network_factory.protocols[self.name]
     def calc_fall(self):
         acceleration = 9.8
-        self.fall_length += 1
+        if self.jump_length < self.jump_limit:
+            self.fall_length += 1
         #return 4
         time = 1./30
-        fall = self.velocity[1] * time + (.5) * acceleration * (time ** 2) 
-        self.velocity[1] = fall / time
+        fall = self.velocity[1] * time + (.5) * acceleration * (time ** 2)
+        self.velocity[1] = self.velocity[1] + acceleration * time
         #print("BEFORE: ",fall)
         fall = int(fall * 100 + 5) #*16 before
         #print("AFTER: ",fall)
@@ -58,16 +66,19 @@ class PlayerClass(pygame.sprite.Sprite):
             elif self.movement["sprint"] == True:
                 speed[0] = int(speed[0] * 1.5)
             self.rect.x += speed[0]
-            collisions = pygame.sprite.spritecollide(self, self.server.blocks.solid, False) #TODO: Change over to rect collisions
+            collisions = self.check_collisions("solid")
             for cblock in collisions:
-                if self.server.blocks.damaging in cblock.groups(): #TODO:Move and improve damage block code!!
-                    if self.damage_lockout['block'] <= 0: 
-                        self.take_damage(blockData[cblock.name]["extra"]["damage"], cblock.name)
-                        self.damage_lockout['block'] = 15
+##                if self.server.maps.damaging in cblock.groups(): #TODO:Move and improve damage block code!!
+##                    if self.damage_lockout['block'] <= 0: 
+##                        self.take_damage(blockData[cblock.name]["extra"]["damage"], cblock.name)
+##                        self.damage_lockout['block'] = 15
                 if speed[0] > 0:
                     self.rect.right = cblock.rect.left
                 else:
                     self.rect.left = cblock.rect.right
+            if self.movement["jump"] == True and self.jump_length == 1:
+                self.velocity[1] = -10
+            ##speed[1] += self.calc_fall()
             if self.movement["jump"] == True and self.jump_length < self.jump_limit:
                 speed[1] -= 8
                 self.jump_length += 1
@@ -82,7 +93,7 @@ class PlayerClass(pygame.sprite.Sprite):
             self.rect.y += speed[1]
             if self.rect.y > 832: #Full body length beyond 768 tall screen
                 self.rect.y = -64
-            collisions = pygame.sprite.spritecollide(self, self.server.blocks.solid, False)
+            collisions = self.check_collisions("solid")
             for cblock in collisions:
                 if speed[1] > 0:
                     self.jump_length = 0
@@ -94,6 +105,7 @@ class PlayerClass(pygame.sprite.Sprite):
                         self.fall_damage = 0
                 else:
                     self.jump_length = self.jump_limit
+                    self.velocity[1] = 0
                     self.rect.top = cblock.rect.bottom
             if collisions == [] and self.movement["jump"] == False:
                 self.jump_length = self.jump_limit
@@ -115,7 +127,7 @@ class PlayerClass(pygame.sprite.Sprite):
         if self.health <= 0:
             self.die()
             #print("{} was killed by {}".format(self.name, self.last_damage))
-            self.server.network_data_handler.send_packet_all("message", "{} was killed by {}".format(self.name, self.last_damage))
+            self.server.network_data_handler.send_packet_all("chat_message", "{} was killed by {}".format(self.name, self.last_damage))
     def die(self):
         self.set_all_movement(False)
         self.lock_controls = True
@@ -138,23 +150,6 @@ class PlayerClass(pygame.sprite.Sprite):
         self.movement["dead"] = False
         self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
         self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
-    def place_block(self):
-        block = self.get_held_block() #TODO: Change with inventory
-        if not isinstance(block, BaseItemClass.BlockClass):
-            return False
-        block.place(self)
-        blocks.remove(block)
-        if pygame.sprite.spritecollide(block, blocks, False) != [] or \
-            pygame.sprite.spritecollide(block, players, False) != []:
-                block.kill()
-                return False
-        #TODO: After inventory, place block -1
-        blocks.add(block)
-        return True
-    def break_block(self):
-        pass
-    def get_held_item(self):
-        return BaseItemClass.BlockClass('spike',)
     def update_movement_input(self, movement_dict):
         update_location = False
         temp_movement = self.movement.copy()
@@ -189,7 +184,7 @@ class PlayerClass(pygame.sprite.Sprite):
         elif value == False and self.movement["crouch"] == True:
             self.rect.height += 32
             self.rect.y -= 32
-            if pygame.sprite.spritecollide(self, self.server.blocks.all, False) != []:
+            if self.check_collisions("all") != []:
                 self.rect.height -= 32
                 self.rect.y += 32
                 self.attempt_stand = True

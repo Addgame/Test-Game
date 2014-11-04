@@ -11,8 +11,9 @@ class GraphicsEngineClass():
         self.load_block_textures()
         self.load_player_skins("_all")
         self.fonts = { \
-            "corbel-15": pygame.font.Font(pygame.font.match_font("corbel"), 15), \
-            "corbel-25": pygame.font.Font(pygame.font.match_font("corbel"), 25), \
+            "corbel-15": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 15), \
+            "corbelb-15": pygame.font.Font("..\\data\\fonts\\corbelb.ttf", 15), \
+            "corbel-25": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 25), \
             }
         if screen != None:
             size = screen.get_size()
@@ -22,9 +23,8 @@ class GraphicsEngineClass():
         self.client.clock.tick(float(self.client.options["fps"]))
     def create_display(self, size, flags = 0):
         self.screen = pygame.display.set_mode(size, flags)
-        pygame.display.set_caption("My Game v.0.0.4")
+        pygame.display.set_caption("Unnamed Game v.0.1.2")
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
-        self.alpha_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
         self.connection_lost_text = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
@@ -50,13 +50,18 @@ class GraphicsEngineClass():
         self.draw_projectiles()
         self.draw_messages()
         self.draw_chat_box()
-        self.draw_hud()
+        if self.client.show_hud:
+            self.draw_hud()
         self.draw_cursor()
         pygame.display.update()
         self.client.clock.tick()#float(self.client.options["fps"]))
     def draw_blocks(self):
-        for block in self.client.blocks:
-            self.screen.blit(self.block_textures[block["name"]], block["location"])
+        for x in range(self.client.player.current_map[0] - 2, self.client.player.current_map[0] + 3):
+            for y in range(self.client.player.current_map[1] - 1, self.client.player.current_map[1] + 2):
+                map = self.client.maps.get_map((x,y))
+                if map:
+                    self.screen.blit(map.image, [map.draw_loc[0] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
+                        map.draw_loc[1] - self.client.player.rect.y + (self.screen.get_rect().centery - 15)])
     def draw_players(self):
         self.update_player_skins()
         for name in self.client.players.names:
@@ -64,7 +69,8 @@ class GraphicsEngineClass():
                 player = self.client.players.name_to_player(name)
                 self.screen.blit(player.current_img, player.location)
         if self.client.player:
-            self.screen.blit(self.client.player.current_img, self.client.player.location)
+            #self.screen.blit(self.client.player.current_img, self.client.player.location)
+            self.screen.blit(self.client.player.current_img, [self.screen.get_rect().centerx - 15, self.screen.get_rect().centery - 15])
     def draw_background(self):
         self.screen.fill(WHITE)
     def draw_messages(self):
@@ -87,12 +93,20 @@ class GraphicsEngineClass():
             hearts -= 1
         if self.client.player.movement["dead"] == True:
             self.screen.blit(self.death_screen, [0,0])
+        self.client.player.inventory.draw()
+        ##self.screen.blit(self.client.player.inventory.image, [self.screen.get_width() - self.client.player.inventory.image.get_width(), \
+        ##    self.screen.get_height() - self.client.player.inventory.image.get_height()])
+        #for slot in range(10):
+        #    self.screen.blit(self.hud_textures["inventoryslot"], [self.screen.get_width() - (36 * (slot + 1)), self.screen.get_height() - 36])
+        #self.screen.blit(self.projectile_textures["missile"], [self.screen.get_width() - 352, self.screen.get_height() - 25])
     def draw_projectiles(self):
         for identifier, data in self.client.projectiles.items():
             image = self.projectile_textures[data["type"]]
             if data["velocity"][0] < 0:
                 image = pygame.transform.flip(image, True, False)
             self.screen.blit(image, data["location"])
+            #self.screen.blit(image, [data["location"][0] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
+            #    data["location"][1] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15)])
     def load_player_skins(self, name):
         if name == "_all":
             for player in self.client.players:
@@ -113,7 +127,7 @@ class GraphicsEngineClass():
         texture = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\cursor\\cursor.png")
         return texture
     def load_hud_textures(self):
-        self.hud_textures = {"heart": None, "hearthalf": None}
+        self.hud_textures = {"heart": None, "hearthalf": None, "inventoryslot": None, "slothighlight": None, "hotbarslot": None}
         for key in self.hud_textures:
             try:
                 self.hud_textures[key] = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\hud\\" + key + ".png")

@@ -1,10 +1,10 @@
 import pygame
 from projectileData import *
+from entity import *
 
-class ProjectileClass(pygame.sprite.Sprite):
+class ProjectileClass(EntityClass):
     def __init__(self, server, type, velocity, location):
-        pygame.sprite.Sprite.__init__(self)
-        self.server = server
+        EntityClass.__init__(self, server)
         self.identifier = self.server.identifier_generator.generate()
         self.type = type
         self.velocity = velocity
@@ -21,7 +21,7 @@ class ProjectileClass(pygame.sprite.Sprite):
         player_collisions = pygame.sprite.spritecollide(self, self.server.players, False)
         for player in player_collisions:
             player.take_damage(projectile_data[self.type]["damage"], self.type)
-        block_collisions = pygame.sprite.spritecollide(self, self.server.blocks.solid, False)
+        block_collisions = self.check_collisions("solid")
         for block in block_collisions:
             pass
         if player_collisions != []:

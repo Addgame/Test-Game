@@ -4,6 +4,7 @@ from twisted.internet.protocol import ClientFactory
 import base64
 import json
 from client import MessageClass
+from clientobjects import ClientBlockItemClass
 from colors import *
 
 class GameClientProtocol(LineReceiver):
@@ -56,6 +57,7 @@ class DataHandler():
             elif packet_type == "login_fail":
                 self.client.log("Login Failed. Reason: " + packet["data"][0], "ERROR")
                 self.client.network_protocol.transport.loseConnection()
+                self.client.quit()
         elif self.client.game_state == "ingame":
             if packet_type == "player_list":
                 for name in packet["data"][0]:
@@ -65,7 +67,7 @@ class DataHandler():
                     print("RECEIVED PLAYERS")
             elif packet_type == "player_data_location":
                 name = packet["data"][0]
-                self.client.players.name_to_player(name).location = packet["data"][1]
+                self.client.players.name_to_player(name).update_location(packet["data"][1])
                 if self.client.debug:
                     print("RECEIVED PLAYER {} LOCATION".format(name))
             elif packet_type == "player_data_movement":
@@ -74,6 +76,31 @@ class DataHandler():
             elif packet_type == "player_data_health":
                 name = packet["data"][0]
                 self.client.players.name_to_player(name).health = packet["data"][1]
+            elif packet_type == "player_data_inv_selected_slot":
+                name = packet["data"][0]
+                slot = packet["data"][1]
+                player = self.client.players.name_to_player(name)
+                if player != None:
+                    player.inventory.selected_slot = slot
+            elif packet_type == "player_data_inv_row_length":
+                name = packet["data"][0]
+                new_row_len = packet["data"][1]
+                player = self.client.players.name_to_player(name)
+                if player != None:
+                    player.inventory.update_row_length(new_row_len)
+            elif packet_type == "player_data_inv_size":
+                name = packet["data"][0]
+                size = packet["data"][1]
+                player = self.client.players.name_to_player(name)
+                if player != None:
+                    player.inventory.update_size(size)
+            elif packet_type == "player_data_inv_items":
+                player = self.client.players.name_to_player(packet["data"][0])
+                items = packet["data"][1]
+                if player != None:
+                    player.inventory.items_from_list(items)
+            elif packet_type == "player_data_inv_selected_item":
+                pass
             elif packet_type == "new_projectile":
                 self.client.projectiles[packet["data"][0]] = packet["data"][1]
             elif packet_type == "projectile_data":
@@ -89,6 +116,9 @@ class DataHandler():
                 self.client.blocks = packet["data"][0]
                 if self.client.debug:
                     print("RECEIVED BLOCKS")
+            elif packet_type == "map":
+                location = tuple(packet["data"][0])
+                self.client.maps.receive_map(location, packet["data"][1])
             elif packet_type == "player_join":
                 name = packet["data"][0]
                 self.client.players.add_player(name)
@@ -103,10 +133,19 @@ class DataHandler():
                 if self.client.debug:
                     print("RECEIVED DEATH")
                 #self.client.players[self.client.player_name]["movement"]["dead"] = True
-                self.client.sound.sounds["death"].play()
+                self.client.sound.play_sound("death")
             elif packet_type == "chat_message":
                 message = MessageClass(packet["data"][0])
                 self.client.message_group.add_message(message)
+            elif packet_type == "playmusic":
+                self.client.sound.play_music(packet["data"][0])
+            elif packet_type == "playsound":
+                try:
+                    self.client.sound.play_sound(packet["data"][0])
+                except:
+                    pass
+            else:
+                self.client.log("Unknown packet received!: " + packet_type, "WARN")
     def send_packet(self, type, *data):
         if self.client.debug:
             print("SENDING PACKET: ", type)
