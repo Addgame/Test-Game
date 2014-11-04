@@ -3,14 +3,18 @@ from sounds import *
 from graphics import *
 from clientobjects import *
 from networking import *
+from clientobjects import *
 from utils import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 class ClientClass():
     def __init__(self, name, server_type, screen = None, debug = False):
         self.debug = debug
+        self.colored_maps = False
+        self.show_hud = True
         self.player_name = name
-        self.player = None
+        #self.player = None
+        #self.player = ClientPlayerClass(self, self.player_name)
         self.server_type = server_type
         self.game_state = "login"
         self.load_options()
@@ -19,9 +23,10 @@ class ClientClass():
         except:
             self.log_file = open("..\\data\\client_log.txt", 'w')
         self.log("Game Client Started")
+        self.mouse_visible = False
         self.input_mode = None
         self.set_input_mode("keyboard") #sets to keyboard
-        self.set_input_mode("controller") #attempts to set to controller if possible
+        #self.set_input_mode("controller") #attempts to set to controller if possible
         self.clock = pygame.time.Clock()
         self.players = ClientPlayerGroup(self)
         self.projectiles = {}
@@ -30,7 +35,11 @@ class ClientClass():
         self.graphics = GraphicsEngineClass(self, screen)
         self.message_group = MessageGroupClass(self)
         self.chat_box = ChatBoxClass(self)
-        self.blocks = []
+        self.previous_messages = []
+        self.prev_message_num = -1
+        self.maps = ClientMapGroup(self)
+        self.NONE_ITEM = ClientBaseItemClass(self, 1, "NONE_ITEM", "NONEITEM")
+        self.player = ClientPlayerClass(self, self.player_name)
         self.cursor = CursorClass(self)
         self.network_data_handler = DataHandler(self)
         self.network_connector = None
@@ -45,7 +54,7 @@ class ClientClass():
         reactor.callLater(1, self.game_loop)
         reactor.run()
     def game_loop(self):
-        self.get_input()
+        self.get_game_input()
         self.graphics.draw_screen()
         reactor.callLater(1/float(self.options["fps"]), self.game_loop)
     def load_options(self):
@@ -83,12 +92,14 @@ class ClientClass():
             self.controller.init()
             self.input_mode = "controller"
             pygame.mouse.set_visible(True)
+            self.mouse_visible = True
             self.log("Input mode set to controller")
         elif mode == "keyboard" and self.input_mode != "keyboard":
             self.input_mode = "keyboard"
             pygame.mouse.set_visible(False)
+            self.mouse_visible = False
             self.log("Input mode set to keyboard")
-    def get_input(self):
+    def get_game_input(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit()
@@ -122,20 +133,17 @@ class ClientClass():
             elif event.key == pygame.K_5:
                 self.respawn()
             elif event.key == pygame.K_6:
-                self.sound.play_music()
-            elif event.key == pygame.K_7:
-                self.sound.stop_music()
-            elif event.key == pygame.K_8:
                 self.graphics.load_projectile_textures()
                 self.graphics.load_hud_textures()
                 self.graphics.load_block_textures()
                 self.graphics.load_player_skins("_all")
-            elif event.key == pygame.K_9:
-                self.graphics.create_display(self.graphics.screen.get_size())
-            elif event.key == pygame.K_0:
-                self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)
             elif event.key == pygame.K_t:
                 self.change_input_type()
+            elif event.key == pygame.K_SLASH:
+                self.change_input_type()
+                self.chat_box.text = "/"
+                self.chat_box.pos = 1
+                self.chat_box.make_image()
             elif event.key == pygame.K_ESCAPE:
                 self.quit()
         if self.input_mode == 'keyboard': #Keyboard only event checks
@@ -146,6 +154,10 @@ class ClientClass():
                     self.set_move(True, 'left')
                 elif event.key == pygame.K_d:
                     self.set_move(True, 'right')
+                elif event.key == pygame.K_e:
+                    self.player.inventory.show_full.toggle()
+                    pygame.mouse.set_visible(not self.mouse_visible)
+                    self.mouse_visible = not self.mouse_visible
                 elif event.key == pygame.K_LSHIFT:
                     self.set_crouch(True)
                 elif event.key == pygame.K_LCTRL:
@@ -162,22 +174,35 @@ class ClientClass():
                 elif event.key == pygame.K_LCTRL:
                     self.set_sprint(False)
             elif event.type == pygame.MOUSEMOTION:
-                self.cursor.update(event.pos[0], event.pos[1])
+                if not self.player.inventory.show_full.get():
+                    self.cursor.update(event.pos[0], event.pos[1])
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    self.launch_projectile()
+                    self.network_data_handler.send_packet("click_event", "primary", self.cursor.get_point())
                 elif event.button == 3:
-                    pass #self.place_block()
+                    self.network_data_handler.send_packet("click_event", "secondary", self.cursor.get_point())
+                elif event.button == 4:
+                    self.player.inventory.selected_slot -= 1
+                    if self.player.inventory.selected_slot < 0:
+                        self.player.inventory.selected_slot = self.player.inventory.hotbar_size - 1
+                    self.network_data_handler.send_packet("slot_selected", self.player.inventory.selected_slot)
+                elif event.button == 5:
+                    self.player.inventory.selected_slot += 1
+                    if self.player.inventory.selected_slot > self.player.inventory.hotbar_size - 1:
+                        self.player.inventory.selected_slot = 0
+                    self.network_data_handler.send_packet("slot_selected", self.player.inventory.selected_slot)
         elif self.input_mode == 'controller': #Controller only event checks
             if event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 5:
+                if event.button == 0:
+                    self.player.inventory.show_full.toggle()
+                elif event.button == 5:
                     self.set_crouch(True)
                 elif event.button == 4:
                     self.set_sprint(True)
                 elif event.button == 6:
-                    self.launch_projectile()
+                    self.network_data_handler.send_packet("click_event", "primary", self.cursor.get_point())
                 elif event.button == 7:
-                    pass #self.place_block()
+                    self.network_data_handler.send_packet("click_event", "secondary", self.cursor.get_point())
                 elif event.button == 3:
                     self.respawn()
                 elif event.button == 11:
@@ -220,12 +245,30 @@ class ClientClass():
                 self.change_input_type()
             elif event.key == pygame.K_BACKSPACE:
                 if self.chat_box.pos:
+                    self.prev_message_num = -1
                     self.chat_box.text = self.chat_box.text[:self.chat_box.pos - 1] + self.chat_box.text[self.chat_box.pos:]
                     self.chat_box.pos -= 1
                     changed = True
             elif event.key == pygame.K_DELETE:
                 if self.chat_box.pos < len(self.chat_box.text):
+                    self.prev_message_num = -1
                     self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + self.chat_box.text[self.chat_box.pos + 1:]
+                    changed = True
+            elif event.key == pygame.K_UP:
+                if len(self.previous_messages) and len(self.previous_messages) > self.prev_message_num + 1:
+                    self.prev_message_num += 1
+                    self.chat_box.text = self.previous_messages[self.prev_message_num]
+                    self.chat_box.pos = len(self.chat_box.text)
+                    changed = True
+            elif event.key == pygame.K_DOWN:
+                if len(self.previous_messages) and self.prev_message_num - 1 >= -1:
+                    self.prev_message_num -= 1
+                    if self.prev_message_num > -1:
+                        self.chat_box.text = self.previous_messages[self.prev_message_num]
+                        self.chat_box.pos = len(self.chat_box.text)
+                    else:
+                        self.chat_box.text = ""
+                        self.chat_box.pos = 0
                     changed = True
             elif event.key == pygame.K_LEFT:
                 if self.chat_box.pos:
@@ -242,10 +285,12 @@ class ClientClass():
                 self.chat_box.pos = len(self.chat_box.text)
                 changed = True
             elif event.key == pygame.K_RETURN:
+                self.previous_messages.insert(0, self.chat_box.text)
                 self.chat_box.send()
             elif event.key == pygame.K_RSHIFT or event.key == pygame.K_LSHIFT:
                 pass
             else:
+                self.prev_message_num = -1
                 if len(self.chat_box.text) < self.chat_box.char_limit:
                     character = str(event.unicode)
                     self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + character + self.chat_box.text[self.chat_box.pos:]
@@ -269,6 +314,36 @@ class ClientClass():
                 pygame.mouse.set_visible(True)
             else:
                 pygame.mouse.set_visible(False)
+    def check_commands(self, text):
+        value = False
+        if text.startswith("/client "):
+            value = True
+            command_list = text.split()
+            try:
+                if command_list[1] == "map_color":
+                    self.colored_maps = string_to_boolean(command_list[2])
+                    for map in self.maps.maps.itervalues():
+                        map.create_image()
+                elif command_list[1] == "show_hud":
+                    self.show_hud = string_to_boolean(command_list[2])
+                elif command_list[1] == "fullscreen":
+                    if string_to_boolean(command_list[2]):
+                        self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)
+                    else:
+                        self.graphics.create_display(self.graphics.screen.get_size())
+                elif command_list[1] == "music":
+                    if command_list[2] == "start":
+                        if len(command_list) >= 4:
+                            self.sound.play_music(command_list[3])
+                        else:
+                            self.sound.play_music()
+                    elif command_list[2] == "stop":
+                        self.sound.stop_music()
+                elif command_list[1] == "debug":
+                    self.debug = string_to_boolean(command_list[2])
+            except:
+                self.log("Client Command Execution Failed: " + text, "ERROR")
+        return value
     def set_move(self, value, direction):
         self.network_data_handler.send_packet("player_movement_input", {direction: value})
     def set_crouch(self, value):
@@ -277,10 +352,6 @@ class ClientClass():
         self.network_data_handler.send_packet("player_movement_input", {"sprint": value})
     def set_jump(self, value):
         self.network_data_handler.send_packet("player_movement_input", {"jump": value})
-    def launch_projectile(self):
-        if self.projectile_cooldown < 1:
-            self.network_data_handler.send_packet("launch_projectile", self.cursor.get_point())
-            self.projectile_cooldown = int(self.clock.get_fps())
     def respawn(self):
         self.network_data_handler.send_packet("respawn")
 
@@ -372,7 +443,8 @@ class ChatBoxClass():
         value = self.text[:self.pos] + "|" + self.text[self.pos:]
         self.image = self.client.graphics.fonts["corbel-15"].render("> " + value, True, color)
     def send(self):
-        self.client.network_data_handler.send_packet("player_message", self.text)
+        if not self.client.check_commands(self.text):
+            self.client.network_data_handler.send_packet("player_message", self.text)
         self.text = ""
         self.pos = 0
         self.make_image()
@@ -423,8 +495,9 @@ class CursorClass():
     def update_point_rect(self):
         self.point_rect.x = self.rect.x + 8
         self.point_rect.y = self.rect.y + 8
-    def get_point(self): #TODO: Remove?
-        return self.point_rect.center
+    def get_point(self):
+        return [self.point_rect.centerx - (self.client.graphics.screen.get_rect().centerx - 15) + self.client.player.rect.x,\
+            self.point_rect.centery - (self.client.graphics.screen.get_rect().centery - 15) + self.client.player.rect.y]
     def draw(self):
         self.client.graphics.screen.blit(self.image, self.rect)
 

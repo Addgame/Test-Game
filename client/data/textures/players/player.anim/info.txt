@@ -1,0 +1,4 @@
+player:2
+playerCrouch:
+playerCrouchJump:
+playerJump:

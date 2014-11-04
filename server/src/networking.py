@@ -29,7 +29,8 @@ class GameServerProtocol(LineReceiver):
         self.factory.server.log("Connected to " + self.addr.host)
     def connectionLost(self, reason):
         self.factory.server.log("Lost connection to " + self.addr.host)
-        self.factory.remove_player(self)
+        if self.valid_login:
+            self.factory.remove_player(self)
     
 class GameServerFactory(ServerFactory):
     def __init__(self, server):
@@ -41,21 +42,22 @@ class GameServerFactory(ServerFactory):
         protocol = GameServerProtocol(self, addr)
         return protocol
     def add_player(self, protocol):
-        print("ADDING PLAYER")
+        #print("ADDING PLAYER")
         self.protocols[protocol.name] = protocol
-        PlayerClass(self.server, [0, 0], protocol.name)
-        self.server.network_data_handler.send_packet_all("player_join", protocol.name)
-        self.server.network_data_handler.send_packet(protocol, "player_list", \
+        player = PlayerClass(self.server, [0, 0], protocol.name)
+        self.data_handler.send_packet_all("player_join", protocol.name)
+        self.data_handler.send_packet(protocol, "player_list", \
             [player.name for player in self.server.players])
         for player in self.server.players:
-            self.server.network_data_handler.send_packet(protocol, "player_data_location", player.name, [player.rect.x, player.rect.y])
-            self.server.network_data_handler.send_packet(protocol, "player_data_movement", player.name, player.movement)
-        self.server.network_data_handler.send_packet(protocol, "blocks", self.server.blocks.convert_list())
+            self.data_handler.send_packet(protocol, "player_data_location", player.name, [player.rect.x, player.rect.y])
+            self.data_handler.send_packet(protocol, "player_data_movement", player.name, player.movement)
+        self.data_handler.send_packet(protocol, "player_data_health", protocol.name, player.health)
+        #self.server.network_data_handler.send_packet(protocol, "blocks", self.server.blocks.convert_list())
     def remove_player(self, protocol):
         self.protocols.pop(protocol.name)
         player = self.server.name_to_player(protocol.name)
         self.server.players.remove(player)
-        self.server.network_data_handler.send_packet_all("player_leave", protocol.name)
+        self.data_handler.send_packet_all("player_leave", protocol.name)
     
 class DataHandler():
     def __init__(self, server):
@@ -80,6 +82,15 @@ class DataHandler():
             elif packet_type == "respawn":
                 player = self.server.name_to_player(protocol.name)
                 player.respawn()
+            elif packet_type == "click_event":
+                button = packet["data"][0]
+                location = packet["data"][1]
+                player = self.server.name_to_player(protocol.name)
+                player.inventory.use_item(button, location)
+            elif packet_type == "slot_selected":
+                slot = int(packet["data"][0])
+                player = self.server.name_to_player(protocol.name)
+                player.inventory.update_selected(slot)
             elif packet_type == "launch_projectile":
                 player = self.server.name_to_player(protocol.name)
                 if player.movement["dead"]:
@@ -89,15 +100,11 @@ class DataHandler():
                 else:
                     x_factor = -1
                 ProjectileClass(self.server, "missile", [30 * x_factor, 1], [player.rect.centerx + 17 * x_factor, player.rect.centery])
+            elif packet_type == "get_map":
+                location = tuple(packet["data"][0])
+                self.send_packet(protocol, "map", location, self.server.maps.get_map(location).convert_list())
             elif packet_type == "player_message":
-                packet["type"] = "chat_message"
-                if packet["data"][0] == "":
-                    return
-                if len(packet["data"][0]) > self.server.max_player_message_length:
-                    packet["data"][0] = packet["data"][0][:self.server.max_player_message_length]
-                packet["data"][0] = "<" + protocol.name + "> " + packet["data"][0]
-                for protocol in self.server.network_factory.protocols.itervalues():
-                    self.send_data(protocol, packet)
+                self.server.receive_message(packet["data"][0], protocol)
     def send_packet_all(self, type, *data):
         for protocol in self.server.network_factory.protocols.itervalues():
             self.send_packet_base(protocol, type, data)
