@@ -17,11 +17,11 @@ class ClientClass():
         #self.player = ClientPlayerClass(self, self.player_name)
         self.server_type = server_type
         self.game_state = "login"
-        self.load_options()
         try:
             self.log_file = open("..\\data\\client_log.txt", 'a')
         except:
             self.log_file = open("..\\data\\client_log.txt", 'w')
+        self.load_options()
         self.log("Game Client Started")
         self.mouse_visible = False
         self.input_mode = None
@@ -32,7 +32,7 @@ class ClientClass():
         self.projectiles = {}
         self.projectile_cooldown = 0
         self.sound = SoundEngineClass(self)
-        self.graphics = GraphicsEngineClass(self, screen)
+        self.graphics = GraphicsEngineClass(self, screen, self.options["resolution"])
         self.message_group = MessageGroupClass(self)
         self.chat_box = ChatBoxClass(self)
         self.previous_messages = []
@@ -58,24 +58,36 @@ class ClientClass():
         self.graphics.draw_screen()
         reactor.callLater(1/float(self.options["fps"]), self.game_loop)
     def load_options(self):
-        self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0}
+        self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720]}
         try:
             options_file = open("..\\data\\options.txt")
             options_list = options_file.read().split("\n")
             for option in options_list:
                 option_pair = option.split(":")
                 try:
-                    self.options[option_pair[0]] = option_pair[1].strip()
+                    value = option_pair[1].strip()
+                    if value.startswith("["):
+                        value = self.option_string_to_list(value)
+                    self.options[option_pair[0]] = value
                 except KeyError:
                     self.log("Option {} does not exist!".format(option_pair[0]), "ERROR")
             options_file.close()
         except IOError:
             self.log("Options file not found! Creating new one!","ERROR")
             options_file = open("..\\data\\options.txt", 'w')
-            options_file.write("message_limit:5\nsound_volume:1.00\nmusic_volume:.30\nfps:30.0")
+            options_file.write("message_limit:5\nsound_volume:1.00\nmusic_volume:.30\nfps:30.0\nresolution:[1280,720]")
             options_file.close()
         except:
             self.log("Custom options could not be loaded! Using default options!", "ERROR")
+    def option_string_to_list(self, string):
+        list = []
+        string = string.lstrip("[")
+        string = string.rstrip("]")
+        str_list = string.split(",")
+        for item in str_list:
+            item.strip()
+            list.append(int(item))
+        return list
     def log(self, message, type = "INFO"):
         time = str(datetime.datetime.now())
         time_stamp = '[' + time.split('.')[0] + '] [' + type + ']: '
@@ -127,12 +139,16 @@ class ClientClass():
             elif event.key == pygame.K_2:
                 self.graphics.create_display([640, 480])
             elif event.key == pygame.K_3:
-                self.graphics.create_display([1366, 768])
+                self.graphics.create_display([1280, 720])
             elif event.key == pygame.K_4:
-                self.graphics.create_display([1920, 1080])
+                self.graphics.create_display([1366, 768])
             elif event.key == pygame.K_5:
-                self.respawn()
+                self.graphics.create_display([1600, 900])
             elif event.key == pygame.K_6:
+                self.graphics.create_display([1920, 1080])
+            elif event.key == pygame.K_7:
+                self.respawn()
+            elif event.key == pygame.K_8:
                 self.graphics.load_projectile_textures()
                 self.graphics.load_hud_textures()
                 self.graphics.load_block_textures()

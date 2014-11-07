@@ -12,7 +12,6 @@ class Toggle():
     def get(self):
         return self.value
 
-
 def string_to_boolean(string):
     if string in ("true", "True"):
         return True

@@ -21,11 +21,18 @@ class ClientPlayerClass(pygame.sprite.Sprite):
         self.load_images()
         self.current_img = self.images["player"]
     def load_images(self):
-        self.images = {"player": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\player.png").convert(), \
-            "playerCrouch": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\playerCrouch.png").convert(), \
-            "playerCrouchJump": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\playerCrouchJump.png").convert(), \
-            "playerDead": pygame.transform.rotate(pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\player.png"), 90).convert(), \
-            "playerJump": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\playerJump.png").convert()}
+        try:
+            self.images = {"player": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\player.png").convert(), \
+                "playerCrouch": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\playerCrouch.png").convert(), \
+                "playerCrouchJump": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\playerCrouchJump.png").convert(), \
+                "playerDead": pygame.transform.rotate(pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\player.png"), 90).convert(), \
+                "playerJump": pygame.image.load("..\\data\\textures\\players\\" + self.name + "\\playerJump.png").convert()}
+        except:
+            self.images = {"player": pygame.image.load("..\\data\\textures\\players\\player\\player.png").convert(), \
+                "playerCrouch": pygame.image.load("..\\data\\textures\\players\\player\\playerCrouch.png").convert(), \
+                "playerCrouchJump": pygame.image.load("..\\data\\textures\\players\\player\\playerCrouchJump.png").convert(), \
+                "playerDead": pygame.transform.rotate(pygame.image.load("..\\data\\textures\\players\\player\\player.png"), 90).convert(), \
+                "playerJump": pygame.image.load("..\\data\\textures\\players\\player\\playerJump.png").convert()}
     def update_location(self, location):
         self.rect.topleft = location
         self.current_map = (self.rect.x >> 9, self.rect.y >> 9)
@@ -53,7 +60,7 @@ class ClientPlayerGroup(pygame.sprite.Group):
             self.client.player = player
     def remove_player(self, name):
         self.name_to_player(name).kill()
-        self.names.pop(name)
+        self.names.remove(name)
     def name_to_player(self, name):
         if not name in self.names:
             return None

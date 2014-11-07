@@ -92,7 +92,7 @@ class ServerClass():
     def check_commands(self, text, sender):
         command_list = text.split()
         if command_list[0] == "killplayer":
-            if len(command_list) >= 2 and (protocol): #killplayer [playername]
+            if len(command_list) >= 2 and (sender): #killplayer [playername]
                 player = self.name_to_player(command_list[1])
                 player.take_damage(player.health, "nothing")
             else:

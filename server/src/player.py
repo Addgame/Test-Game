@@ -76,7 +76,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                     self.rect.right = cblock.rect.left
                 else:
                     self.rect.left = cblock.rect.right
-            if self.movement["jump"] == True and self.jump_length == 1:
+            if self.movement["jump"] == True and self.jump_length == 0:
                 self.velocity[1] = -10
             ##speed[1] += self.calc_fall()
             if self.movement["jump"] == True and self.jump_length < self.jump_limit:

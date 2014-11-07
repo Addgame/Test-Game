@@ -3,7 +3,7 @@ from colors import *
 from clientobjects import *
 
 class GraphicsEngineClass():
-    def __init__(self, client, screen, texture_directory = "default"):
+    def __init__(self, client, screen, size, texture_directory = "default"):
         self.client = client
         self.texture_dir = texture_directory
         self.load_projectile_textures()
@@ -17,13 +17,11 @@ class GraphicsEngineClass():
             }
         if screen != None:
             size = screen.get_size()
-        else:
-            size = [1366,768]
         self.create_display(size)
         self.client.clock.tick(float(self.client.options["fps"]))
     def create_display(self, size, flags = 0):
         self.screen = pygame.display.set_mode(size, flags)
-        pygame.display.set_caption("Unnamed Game v.0.1.2")
+        pygame.display.set_caption("Unnamed Game v.0.1.3")
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
@@ -67,7 +65,8 @@ class GraphicsEngineClass():
         for name in self.client.players.names:
             if name != self.client.player_name:
                 player = self.client.players.name_to_player(name)
-                self.screen.blit(player.current_img, player.location)
+                self.screen.blit(player.current_img, [player.rect.x- self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
+                    player.rect.y - self.client.player.rect.y + (self.screen.get_rect().centery - 15)])
         if self.client.player:
             #self.screen.blit(self.client.player.current_img, self.client.player.location)
             self.screen.blit(self.client.player.current_img, [self.screen.get_rect().centerx - 15, self.screen.get_rect().centery - 15])

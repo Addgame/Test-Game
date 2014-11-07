@@ -18,6 +18,10 @@ class GameServerProtocol(LineReceiver):
             self.factory.data_handler.send_packet(self, "login_fail", "A player with this name is already in the game!")
             self.transport.loseConnection()
             return False
+        if name == "_all":
+            self.factory.data_handler.send_packet(self, "login_fail", "Illegal name!")
+            self.transport.loseConnection()
+            return False
         self.name = name
         self.valid_login = True
         self.factory.server.network_data_handler.send_packet(self, "login_succeed")
