@@ -59,6 +59,9 @@ class ServerClass():
                 elif event.key == pygame.K_4:
                     for player in self.players:
                         player.take_damage(10, 'magic')
+                elif event.key == pygame.K_5:
+                    print([player.movement for player in self.players])
+                    print([player.velocity for player in self.players])
                 elif event.key == pygame.K_ESCAPE:
                     self.quit()
             elif event.type == pygame.QUIT:
@@ -71,7 +74,7 @@ class ServerClass():
         self.log_file.write(log_message + '\n')
     def update_players(self):
         for player in self.players:
-            player.update()
+            player.update_physics()
     def name_to_player(self, name):
         for player in self.players:
             if player.name == name:

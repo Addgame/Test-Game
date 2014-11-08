@@ -67,7 +67,7 @@ class GraphicsEngineClass():
         for name in self.client.players.names:
             if name != self.client.player_name:
                 player = self.client.players.name_to_player(name)
-                self.screen.blit(player.current_img, player.location)
+                self.screen.blit(player.current_img, player.rect.topleft)
         if self.client.player:
             #self.screen.blit(self.client.player.current_img, self.client.player.location)
             self.screen.blit(self.client.player.current_img, [self.screen.get_rect().centerx - 15, self.screen.get_rect().centery - 15])

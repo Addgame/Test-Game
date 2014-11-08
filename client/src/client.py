@@ -137,6 +137,8 @@ class ClientClass():
                 self.graphics.load_hud_textures()
                 self.graphics.load_block_textures()
                 self.graphics.load_player_skins("_all")
+            elif event.key == pygame.K_7:
+                print(self.player.movement)
             elif event.key == pygame.K_t:
                 self.change_input_type()
             elif event.key == pygame.K_SLASH:
