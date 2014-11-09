@@ -4,6 +4,8 @@ from server import *
 from entity import *
 from inventory import *
 
+import pickle
+
 class PlayerClass(EntityClass, InventoryOwnerClass):
     def __init__(self, server, location, name):
         EntityClass.__init__(self, server)
@@ -12,14 +14,18 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         self.rect = pygame.Rect(location, self.size)
         self.spawnpoint = [0,0]
         self.name = name
-        self.movement = {"left":False, "right":False, "jump":False, "crouch":False, "sprint":False, "speed":5, "dead":False}
+        self.movement = {"left":False, "right":False, "jump":False, "crouch":False, "sprint":False, "speed":3, "dead":False}
         self.attempt_stand = False
         self.attempt_sprint = False
-        self.jump_length = 0
-        self.jump_limit = 10
+        #self.jump_length = 0
+        #self.jump_limit = 10
+        self.num_jump = 0
+        self.num_jump_limit = 1
+        self.can_jump = False
         self.health = 200
         self.fall_length = 0
         self.fall_damage = 0
+        self.on_ground = False
         self.velocity = [0,0]
         self.lock_controls = False
         self.last_damage = "nothing"
@@ -28,11 +34,76 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         #self.cursor_pos = [0,0]
         self.server.players.add(self)
     def save(self):
-        pass
+        return
+        pickle.dump(self, open("..\\data\\save\\player.pkl", "wb"), -1)
     def convert_dict(self):
-        return {"movement": self.movement, "location": [self.rect.x, self.rect.y], "health": self.health, "inventory": self.inventory.convert_dict()}
+        return {"movement": self.movement, "location": self.rect.topleft, "health": self.health, "inventory": self.inventory.convert_dict()}
     def get_protocol(self):
         return self.server.network_factory.protocols[self.name]
+    def update_physics(self):
+        if not(self.movement["dead"]):
+            temp_rect = self.rect.copy()
+            time = 1./30
+            y_acceleration = 9.8
+            if self.velocity[1] >= 0 and self.movement["jump"]:
+                self.set_jump(False)
+                self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
+            if self.movement["jump"]:
+                y_acceleration -= 2
+            y_dist = self.velocity[1] * time + (.5) * y_acceleration * (time ** 2)
+            self.velocity[1] = self.velocity[1] + y_acceleration * time
+            y_dist = y_dist * 100 + 2
+            if y_dist > 30:
+                y_dist = 30
+            self.rect.y += y_dist
+            self.on_ground = False
+            collisions = self.check_collisions("solid")
+            for cblock in collisions:
+                if self.velocity[1] > 0:
+                    self.rect.bottom =  cblock.rect.top
+                    self.on_ground = True
+                    self.can_jump = True
+                    self.num_jump = 0
+                    if self.fall_length > 25:
+                        self.take_damage(int((self.fall_length - 25) * .75), "fall")
+                    self.fall_length = 0
+                elif self.velocity[1] < 0:
+                    self.rect.top = cblock.rect.bottom
+                self.velocity[1] = 0
+            if not self.on_ground and not self.movement["jump"] and self.velocity[1] >= 0:
+                self.fall_length += 1
+            if self.rect.y > 832:
+                self.rect.y = -64
+            x_acceleration = 0
+##            if self.on_ground:
+##                if self.velocity[0] > 0:
+##                    if self.velocity[0] >= 1:
+##                        x_acceleration -= 1
+##                    else:
+##                        x_acceleration -= self.velocity[0]
+##                elif self.velocity[0] < 0:
+##                    if self.velocity <= -1:
+##                        x_acceleration += 1
+##                    else:
+##                        x_acceleration += self.velocity[0]
+            x_dist = self.velocity[0] * time + (.5) * x_acceleration * (time ** 2)
+            self.velocity[0] = self.velocity[0] + x_acceleration * time
+            x_dist = x_dist * 100
+            self.rect.x += x_dist
+            collisions = self.check_collisions("solid")
+            for cblock in collisions:
+                if self.velocity[0] > 0:
+                    self.rect.right = cblock.rect.left
+                elif self.velocity[0] < 0:
+                    self.rect.left = cblock.rect.right
+            if self.attempt_stand:
+                if self.set_crouch(False):
+                    self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
+            if self.attempt_sprint:
+                if self.set_sprint(True):
+                    self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
+            if self.rect != temp_rect:
+                self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
     def calc_fall(self):
         acceleration = 9.8
         if self.jump_length < self.jump_limit:
@@ -49,10 +120,11 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         #print("TRUE AFTER: ",fall)    
         #print(self.fall_length)
         return fall
-    def reset_fall(self):
+    def reset(self):
         self.fall_damage = 0
         self.fall_length = 0
-        self.velocity[1] = 0
+        self.set_all_movement(False, True)
+        self.velocity = [0, 0]
     def update(self):
         if not(self.movement["dead"]):
             temp_rect_center = self.rect.center
@@ -107,14 +179,14 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                     self.jump_length = self.jump_limit
                     self.velocity[1] = 0
                     self.rect.top = cblock.rect.bottom
-            if collisions == [] and self.movement["jump"] == False:
+            if collisions and not self.movement["jump"]:
                 self.jump_length = self.jump_limit
             if self.damage_lockout['block'] > 0:
                 self.damage_lockout['block'] -= 1
-            if self.attempt_stand == True:
+            if self.attempt_stand:
                 if self.set_crouch(False):
                     self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
-            if self.attempt_sprint == True:
+            if self.attempt_sprint:
                 if self.set_sprint(True):
                     self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
             if self.rect.center != temp_rect_center:
@@ -136,7 +208,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         self.rect.size = (self.size[1], self.size[0])
         #self.reset_fall()
         self.movement["dead"] = True
-        self.server.network_data_handler.send_packet(self.server.network_factory.protocols[self.name], "death")
+        self.server.network_data_handler.send_packet(self.get_protocol(), "death")
         self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
         self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
     def respawn(self):
@@ -144,7 +216,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         self.set_jump(False)
         self.health = 200
         self.server.network_data_handler.send_packet_all("player_data_health", self.name, self.health)
-        self.reset_fall()
+        self.reset()
         self.rect.topleft = self.spawnpoint
         self.rect.size = self.size
         self.movement["dead"] = False
@@ -173,11 +245,20 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
     def set_crouch(self, value):
         if value == True and self.movement["crouch"] == False and self.lock_controls == False:
             if self.movement["sprint"] == True:
-                self.movement["sprint"] = False
+                self.set_sprint(False)
                 self.attempt_sprint = True
             self.movement["crouch"] = True
             self.rect.height -= 32
             self.rect.y += 32
+            if self.movement["left"]:
+                self.velocity[0] += self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] -= self.movement["speed"]
+            self.movement["speed"] *= .75
+            if self.movement["left"]:
+                self.velocity[0] -= self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] += self.movement["speed"]
             return True
         elif value == True and self.movement["crouch"] == True and self.attempt_stand == True:
             self.attempt_stand = False
@@ -191,19 +272,46 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                 return False
             self.movement["crouch"] = False
             self.attempt_stand = False
+            if self.movement["left"]:
+                self.velocity[0] += self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] -= self.movement["speed"]
+            self.movement["speed"] /= .75
+            if self.movement["left"]:
+                self.velocity[0] -= self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] += self.movement["speed"]
             return True
     def set_jump(self, value):
         if value == True and self.movement["jump"] == False and self.lock_controls == False:
-            if self.jump_length == 0:
+            #if self.jump_length == 0:
+            if self.can_jump:
                 self.movement["jump"] = True
+                if not self.movement["crouch"]:
+                    self.velocity[1] -= 6
+                else:
+                    self.velocity[1] -= 5
+                self.fall_length = 0
+                self.num_jump += 1
+                if self.num_jump == self.num_jump_limit:
+                    self.can_jump = False
         elif value == False and self.movement["jump"] == True:
             self.movement["jump"] = False
-            if self.jump_length > 0:
-                self.jump_length = self.jump_limit
+            #if self.jump_length > 0:
+            #    self.jump_length = self.jump_limit
     def set_sprint(self, value):
         if value == True and self.movement["sprint"] == False and self.movement["crouch"] == False and self.lock_controls == False:
             self.movement["sprint"] = True
             self.attempt_sprint = False
+            if self.movement["left"]:
+                self.velocity[0] += self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] -= self.movement["speed"]
+            self.movement["speed"] *= 1.5
+            if self.movement["left"]:
+                self.velocity[0] -= self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] += self.movement["speed"]
             return True
         elif value == True and self.movement["crouch"] == True and self.attempt_sprint == False:
             self.attempt_sprint = True
@@ -211,20 +319,33 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             self.attempt_sprint = False
         elif value == False and self.movement["sprint"] == True:
             self.movement["sprint"] =  False
+            if self.movement["left"]:
+                self.velocity[0] += self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] -= self.movement["speed"]
+            self.movement["speed"] /= 1.5
+            if self.movement["left"]:
+                self.velocity[0] -= self.movement["speed"]
+            elif self.movement["right"]:
+                self.velocity[0] += self.movement["speed"]
     def set_move(self, value, direction):
         if direction == 'left':
             if value == True and self.movement["left"] == False and self.lock_controls == False:
                 self.movement["left"] = True
+                self.velocity[0] -= self.movement["speed"]
             elif value == False and self.movement["left"] == True:
                 self.movement["left"] =  False
+                self.velocity[0] += self.movement["speed"]
         elif direction == 'right':
             if value == True and self.movement["right"] == False and self.lock_controls == False:
                 self.movement["right"] = True
+                self.velocity[0] += self.movement["speed"]
             elif value == False and self.movement["right"] == True:
                 self.movement["right"] =  False
+                self.velocity[0] -= self.movement["speed"]
     def set_all_movement(self, value, override_lock = False):
         overridden = False
-        if override_lock == True and self.lock_controls == True:
+        if override_lock and self.lock_controls:
             self.lock_controls = False
             overridden = True
         self.set_crouch(value)
@@ -233,5 +354,5 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         self.set_move(value, 'left')
         self.set_move(value, 'right')
         self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
-        if overridden == True:
+        if overridden:
             self.lock_controls = True
