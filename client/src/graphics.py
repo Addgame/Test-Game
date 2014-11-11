@@ -15,6 +15,10 @@ class GraphicsEngineClass():
             "corbelb-15": pygame.font.Font("..\\data\\fonts\\corbelb.ttf", 15), \
             "corbel-25": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 25), \
             }
+        print(self.fonts["corbel-15"].size("Addgame"))
+        print(self.fonts["corbel-15"].size("REALLYLONGNAMEFORTESTING"))
+        print(self.fonts["corbelb-15"].size("Addgame"))
+        print(self.fonts["corbelb-15"].size("REALLYLONGNAMEFORTESTING"))
         if screen != None:
             size = screen.get_size()
         self.create_display(size)
@@ -65,7 +69,7 @@ class GraphicsEngineClass():
         for name in self.client.players.names:
             if name != self.client.player_name:
                 player = self.client.players.name_to_player(name)
-                self.screen.blit(player.current_img, [player.rect.x- self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
+                self.screen.blit(player.current_img, [player.rect.x - self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
                     player.rect.y - self.client.player.rect.y + (self.screen.get_rect().centery - 15)])
         if self.client.player:
             #self.screen.blit(self.client.player.current_img, self.client.player.location)
@@ -90,22 +94,23 @@ class GraphicsEngineClass():
                 self.screen.blit(self.hud_textures["hearthalf"], location)
                 location[0] += self.hud_textures["hearthalf"].get_width() + 1
             hearts -= 1
+        if self.client.show_list:
+            for slot in range(len(self.client.players.names)):
+                self.screen.blit(self.hud_textures["listslot"],\
+                    [(self.screen.get_width() / 2) - self.hud_textures["listslot"].get_width() / 2, (slot * 22) + 4])
+                self.screen.blit(self.fonts["corbelb-15"].render(self.client.players.names[slot], True, WHITE), \
+                    [(self.screen.get_width() / 2) - self.hud_textures["listslot"].get_width() / 2 + 4, (slot * 22) + 8])
         if self.client.player.movement["dead"] == True:
             self.screen.blit(self.death_screen, [0,0])
         self.client.player.inventory.draw()
-        ##self.screen.blit(self.client.player.inventory.image, [self.screen.get_width() - self.client.player.inventory.image.get_width(), \
-        ##    self.screen.get_height() - self.client.player.inventory.image.get_height()])
-        #for slot in range(10):
-        #    self.screen.blit(self.hud_textures["inventoryslot"], [self.screen.get_width() - (36 * (slot + 1)), self.screen.get_height() - 36])
-        #self.screen.blit(self.projectile_textures["missile"], [self.screen.get_width() - 352, self.screen.get_height() - 25])
     def draw_projectiles(self):
         for identifier, data in self.client.projectiles.items():
             image = self.projectile_textures[data["type"]]
             if data["velocity"][0] < 0:
                 image = pygame.transform.flip(image, True, False)
-            self.screen.blit(image, data["location"])
-            #self.screen.blit(image, [data["location"][0] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
-            #    data["location"][1] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15)])
+            #self.screen.blit(image, data["location"])
+            self.screen.blit(image, [data["location"][0] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
+                data["location"][1] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15)])
     def load_player_skins(self, name):
         if name == "_all":
             for player in self.client.players:
@@ -126,7 +131,7 @@ class GraphicsEngineClass():
         texture = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\cursor\\cursor.png")
         return texture
     def load_hud_textures(self):
-        self.hud_textures = {"heart": None, "hearthalf": None, "inventoryslot": None, "slothighlight": None, "hotbarslot": None}
+        self.hud_textures = {"heart": None, "hearthalf": None, "inventoryslot": None, "slothighlight": None, "hotbarslot": None, "listslot": None}
         for key in self.hud_textures:
             try:
                 self.hud_textures[key] = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\hud\\" + key + ".png")

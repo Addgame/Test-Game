@@ -83,13 +83,14 @@ class ServerClass():
             if self.gamemode == "tag":
                 if player.gamemode_data["cooldown"] > 0:
                     player.gamemode_data["cooldown"] -= 1
-                if player.gamemode_data["it"]:
+                if player.gamemode_data["it"] and not player.movement["dead"]:
                     self.players.remove(player)
                     player_collisions = pygame.sprite.spritecollide(player, self.players, False)
                     self.players.add(player)
                     for tagged_player in player_collisions:
-                        if tagged_player.gamemode_data["cooldown"] == 0:
+                        if tagged_player.gamemode_data["cooldown"] == 0 and not tagged_player.movement["dead"]:
                             tagged_player.gamemode_data["it"] = True
+                            gamemodes[self.gamemode]["it_player"] = tagged_player
                             player.gamemode_data["it"] = False
                             player.gamemode_data["cooldown"] = 120
                             self.network_data_handler.send_packet_all("chat_message", tagged_player.name + " is now It!", GREEN)
@@ -155,6 +156,7 @@ class ServerClass():
                     if new_gm == "tag":
                         it_player = random.choice([player for player in self.players])
                         it_player.gamemode_data["it"] = True
+                        gamemodes[self.gamemode]["it_player"] = it_player
                         self.network_data_handler.send_packet_all("chat_message", it_player.name + " is now It!", GREEN)
         except:
             self.log("Server Command Execution Failed: " + text, "ERROR")

@@ -3,6 +3,7 @@ import items
 from server import *
 from entity import *
 from inventory import *
+from gamemodeData import *
 
 import pickle
 
@@ -81,9 +82,9 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                 self.rect.y = -64
                 if self.server.gamemode == "tag":
                     if not self.name == "thesnake512":
-                        self.take_damage(5, "their own failures")
+                        self.take_damage(10, "their own failures")
                     else:
-                        self.take_damage(5, "failed Spanish", "")
+                        self.take_damage(10, "failed Spanish", "")
             x_acceleration = 0
 ##            if self.on_ground:
 ##                if self.velocity[0] > 0:
@@ -210,7 +211,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         if self.health <= 0:
             self.die()
             #print("{} was killed by {}".format(self.name, self.last_damage))
-            self.server.network_data_handler.send_packet_all("chat_message", "{} {}{}".format(self.name, text, self.last_damage))
+            self.server.network_data_handler.send_packet_all("chat_message", "{} {} {}".format(self.name, text, self.last_damage))
     def die(self):
         self.set_all_movement(False)
         self.lock_controls = True
@@ -222,6 +223,9 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         self.server.network_data_handler.send_packet(self.get_protocol(), "death")
         self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
         self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
+        if self.server.gamemode == "tag":
+            gamemodes[self.server.gamemode]["it_player"] = False
+            self.gamemode_data["it"] = True
     def respawn(self):
         self.lock_controls = False
         self.set_jump(False)

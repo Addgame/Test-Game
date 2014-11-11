@@ -51,16 +51,19 @@ class ClientPlayerGroup(pygame.sprite.Group):
         pygame.sprite.Group.__init__(self)
         self.client = client
         self.names = []
-    def add_player(self, name):
+        self.names_color = {}
+    def add_player(self, name, name_color = WHITE):
         player = ClientPlayerClass(self.client, name)
         player.load_images()
         self.names.append(name)
+        self.names_color[name] = name_color
         self.add(player)
         if name == self.client.player_name:
             self.client.player = player
     def remove_player(self, name):
         self.name_to_player(name).kill()
         self.names.remove(name)
+        self.names_color.pop(name)
     def name_to_player(self, name):
         if not name in self.names:
             return None

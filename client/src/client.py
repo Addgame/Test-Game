@@ -12,6 +12,7 @@ class ClientClass():
         self.debug = debug
         self.colored_maps = False
         self.show_hud = True
+        self.show_list = False
         self.player_name = name
         #self.player = None
         #self.player = ClientPlayerClass(self, self.player_name)
@@ -178,6 +179,8 @@ class ClientClass():
                     self.set_crouch(True)
                 elif event.key == pygame.K_LCTRL:
                     self.set_sprint(True)
+                elif event.key == pygame.K_TAB:
+                    self.show_list = True
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_w or event.key == pygame.K_SPACE:
                     self.set_jump(False)
@@ -189,6 +192,8 @@ class ClientClass():
                     self.set_crouch(False)
                 elif event.key == pygame.K_LCTRL:
                     self.set_sprint(False)
+                elif event.key == pygame.K_TAB:
+                    self.show_list = False
             elif event.type == pygame.MOUSEMOTION:
                 if not self.player.inventory.show_full.get():
                     self.cursor.update(event.pos[0], event.pos[1])
@@ -305,6 +310,10 @@ class ClientClass():
                 self.chat_box.send()
             elif event.key == pygame.K_RSHIFT or event.key == pygame.K_LSHIFT:
                 pass
+            elif event.key == pygame.K_TAB:
+                self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + "    " + self.chat_box.text[self.chat_box.pos:]
+                self.chat_box.pos += 4
+                changed = True
             else:
                 self.prev_message_num = -1
                 if len(self.chat_box.text) < self.chat_box.char_limit:
@@ -321,6 +330,7 @@ class ClientClass():
             self.chat_box.show.toggle()
             if self.chat_box.show.get():
                 pygame.mouse.set_visible(True)
+                self.set_all_movement(False)
             else:
                 pygame.mouse.set_visible(False)
         else:
@@ -328,6 +338,7 @@ class ClientClass():
             self.chat_box.show.set(set)
             if self.chat_box.show.get():
                 pygame.mouse.set_visible(True)
+                self.set_all_movement(False)
             else:
                 pygame.mouse.set_visible(False)
     def check_commands(self, text):
@@ -368,6 +379,9 @@ class ClientClass():
         self.network_data_handler.send_packet("player_movement_input", {"sprint": value})
     def set_jump(self, value):
         self.network_data_handler.send_packet("player_movement_input", {"jump": value})
+    def set_all_movement(self, value):
+        self.network_data_handler.send_packet("player_movement_input", \
+            {"left": value, "right": value, "crouch": value, "sprint": value, "jump": value})
     def respawn(self):
         self.network_data_handler.send_packet("respawn")
 
