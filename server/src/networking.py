@@ -3,6 +3,7 @@ from twisted.internet import reactor
 from twisted.internet.protocol import ServerFactory
 from player import *
 from projectile import *
+from gamemodeData import *
 import base64
 import json
 
@@ -49,6 +50,11 @@ class GameServerFactory(ServerFactory):
         #print("ADDING PLAYER")
         self.protocols[protocol.name] = protocol
         player = PlayerClass(self.server, [0, 0], protocol.name)
+        if not self.server.gamemode == "freeplay":
+            try:
+                player.gamemode_data = gamemodes[self.server.gamemode]["default_player_data"]
+            except:
+                pass
         self.data_handler.send_packet_all("player_join", protocol.name)
         self.data_handler.send_packet(protocol, "player_list", \
             [player.name for player in self.server.players])

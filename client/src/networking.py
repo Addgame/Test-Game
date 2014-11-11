@@ -135,7 +135,11 @@ class DataHandler():
                 #self.client.players[self.client.player_name]["movement"]["dead"] = True
                 self.client.sound.play_sound("death")
             elif packet_type == "chat_message":
-                message = MessageClass(packet["data"][0])
+                try:
+                    color = packet["data"][1]
+                except:
+                    color = BLACK
+                message = MessageClass(packet["data"][0], color)
                 self.client.message_group.add_message(message)
             elif packet_type == "playmusic":
                 self.client.sound.play_music(packet["data"][0])

@@ -49,11 +49,13 @@ class PlayerInventoryClass(InventoryClass):
         self.selected_item = self.server.NONE_ITEM
         self.update_selected(selected_slot)
     def use_item(self, type, location):
-        if type == "secondary":
-            if isinstance(self.selected_item, BlockItemClass):
-                self.selected_item.place(location)
-                self.reduce_item_stack(self.selected_slot)
-                self.update_selected(self.selected_slot)
+        if not self.owner.movement["dead"]:
+            if type == "secondary":
+                if isinstance(self.selected_item, BlockItemClass):
+                    block = self.selected_item.place(location)
+                    if block.placed:
+                        self.reduce_item_stack(self.selected_slot)
+                        self.update_selected(self.selected_slot)
     def reduce_item_stack(self, slot):
         InventoryClass.reduce_item_stack(self, slot)
         self.server.network_data_handler.send_packet(self.owner.get_protocol(), "player_data_inv_items", self.owner.name, self.items_to_list())

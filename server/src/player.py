@@ -30,6 +30,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         self.lock_controls = False
         self.last_damage = "nothing"
         self.damage_lockout = {'mob':0,'block':0}
+        self.gamemode_data = {}
         self.inventory = PlayerInventoryClass(self.server, self, 40, 10, 9, 0)
         #self.cursor_pos = [0,0]
         self.server.players.add(self)
@@ -72,20 +73,30 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                 self.velocity[1] = 0
             if not self.on_ground and not self.movement["jump"] and self.velocity[1] >= 0:
                 self.fall_length += 1
+            if not self.on_ground and not self.num_jump:
+                self.num_jump += 1
+                if self.num_jump == self.num_jump_limit:
+                    self.can_jump = False
             if self.rect.y > 832:
                 self.rect.y = -64
+                if self.server.gamemode == "tag":
+                    if not self.name == "thesnake512":
+                        self.take_damage(5, "their own failures")
+                    else:
+                        self.take_damage(5, "failed Spanish", "")
             x_acceleration = 0
 ##            if self.on_ground:
 ##                if self.velocity[0] > 0:
 ##                    if self.velocity[0] >= 1:
-##                        x_acceleration -= 1
+##                        x_acceleration -= 30
 ##                    else:
-##                        x_acceleration -= self.velocity[0]
+##                        x_acceleration += self.velocity[0] * 30
 ##                elif self.velocity[0] < 0:
-##                    if self.velocity <= -1:
-##                        x_acceleration += 1
+##                    if self.velocity[0] <= -1:
+##                        x_acceleration += 30
 ##                    else:
-##                        x_acceleration += self.velocity[0]
+##                        x_acceleration -= self.velocity[0] * 30
+##            print("VELOCITY: ", self.velocity[0], " ACCELERATION: ", x_acceleration)
             x_dist = self.velocity[0] * time + (.5) * x_acceleration * (time ** 2)
             self.velocity[0] = self.velocity[0] + x_acceleration * time
             x_dist = x_dist * 100
@@ -191,7 +202,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                     self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
             if self.rect.center != temp_rect_center:
                 self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
-    def take_damage(self, amount, kind):
+    def take_damage(self, amount, kind, text = "was killed by"):
         self.health -= amount #TODO: Adjust damage for items/skills/potions
         self.last_damage = kind
         print(self.name + ": " + str(self.health))
@@ -199,7 +210,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         if self.health <= 0:
             self.die()
             #print("{} was killed by {}".format(self.name, self.last_damage))
-            self.server.network_data_handler.send_packet_all("chat_message", "{} was killed by {}".format(self.name, self.last_damage))
+            self.server.network_data_handler.send_packet_all("chat_message", "{} {}{}".format(self.name, text, self.last_damage))
     def die(self):
         self.set_all_movement(False)
         self.lock_controls = True

@@ -26,7 +26,10 @@ class BlockItemClass(BaseItemClass):
         BaseItemClass.__init__(self, server, "block", count, internal_name, display_name)
         self.internal_name = internal_name
     def place(self, location):
-        BlockClass(self.server, self.internal_name, location)
+        location[0] = location[0] >> 5 << 5
+        location[1] = location[1] >> 5 << 5
+        block = BlockClass(self.server, self.internal_name, location)
+        return block
 
 class BlockClass(pygame.sprite.Sprite):
     def __init__(self, server, name, location):
@@ -38,4 +41,4 @@ class BlockClass(pygame.sprite.Sprite):
         self.damage = block_data[self.block_name]["damage"]
         if self.damage != None:
             self.damage_rect = pygame.Rect(self.rect.x - 2, self.rect.y - 2, self.rect.width + 4, self.rect.height + 4)
-        self.server.maps.set_block(self)
+        self.placed = self.server.maps.set_block(self)

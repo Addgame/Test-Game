@@ -1,5 +1,5 @@
 import pygame
-import datetime, sys
+import datetime, sys, random
 from networking import *
 from items import *
 from terrain import *
@@ -7,6 +7,7 @@ from player import *
 from colors import *
 from identifier import *
 from projectile import *
+from gamemodeData import *
 
 class ServerClass():
     def __init__(self, debug = False):
@@ -23,6 +24,7 @@ class ServerClass():
         self.max_player_message_length = 75
         self.timer = 0
         self.NONE_ITEM = BaseItemClass(self, "NONE", 1, "NONE")
+        self.gamemode = "freeplay"
         self.identifier_generator = IdentifierGeneratorClass(self)
         self.players = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
@@ -62,6 +64,9 @@ class ServerClass():
                 elif event.key == pygame.K_5:
                     print([player.movement for player in self.players])
                     print([player.velocity for player in self.players])
+                elif event.key == pygame.K_6:
+                    for player in self.players:
+                        print(player.name, player.gamemode_data)
                 elif event.key == pygame.K_ESCAPE:
                     self.quit()
             elif event.type == pygame.QUIT:
@@ -75,6 +80,20 @@ class ServerClass():
     def update_players(self):
         for player in self.players:
             player.update_physics()
+            if self.gamemode == "tag":
+                if player.gamemode_data["cooldown"] > 0:
+                    player.gamemode_data["cooldown"] -= 1
+                if player.gamemode_data["it"]:
+                    self.players.remove(player)
+                    player_collisions = pygame.sprite.spritecollide(player, self.players, False)
+                    self.players.add(player)
+                    for tagged_player in player_collisions:
+                        if tagged_player.gamemode_data["cooldown"] == 0:
+                            tagged_player.gamemode_data["it"] = True
+                            player.gamemode_data["it"] = False
+                            player.gamemode_data["cooldown"] = 120
+                            self.network_data_handler.send_packet_all("chat_message", tagged_player.name + " is now It!", GREEN)
+                            break
     def name_to_player(self, name):
         for player in self.players:
             if player.name == name:
@@ -94,29 +113,51 @@ class ServerClass():
             self.network_data_handler.send_packet_all("chat_message", text)
     def check_commands(self, text, sender):
         command_list = text.split()
-        if command_list[0] == "killplayer":
-            if len(command_list) >= 2 and (sender): #killplayer [playername]
-                player = self.name_to_player(command_list[1])
-                player.take_damage(player.health, "nothing")
-            else:
-                player = self.name_to_player(sender.name)
-                player.take_damage(player.health, "self")
-        elif command_list[0] == "playmusic": #playmusic [musicname]
-            if len(command_list) >= 2:
-                self.network_data_handler.send_packet_all("playmusic", command_list[1])
-            else:
-                self.network_data_handler.send_packet_all("playmusic", "PorkAnAngel")
-        elif command_list[0] == "playsound": #playsound <soundname>
-            if len(command_list) >= 2:
-                self.network_data_handler.send_packet_all("playsound", command_list[1])
-        elif command_list[0] == "setinv": #setinv <slot> <itemname>
-            if len(command_list) >= 3:
-                try:
-                    count = int(command_list[3])
-                except:
-                    count = 1
-                for player in self.players:
-                    player.inventory.set_item(int(command_list[1]), BlockItemClass(self, count, command_list[2]))
+        try:
+            if command_list[0] == "killplayer":
+                if len(command_list) >= 2 and (sender): #killplayer [playername]
+                    player = self.name_to_player(command_list[1])
+                    player.take_damage(player.health, "nothing")
+                else:
+                    player = self.name_to_player(sender.name)
+                    player.take_damage(player.health, "self")
+            elif command_list[0] == "playmusic": #playmusic [musicname]
+                if len(command_list) >= 2:
+                    self.network_data_handler.send_packet_all("playmusic", command_list[1])
+                else:
+                    self.network_data_handler.send_packet_all("playmusic", "PorkAnAngel")
+            elif command_list[0] == "playsound": #playsound <soundname>
+                if len(command_list) >= 2:
+                    self.network_data_handler.send_packet_all("playsound", command_list[1])
+            elif command_list[0] == "setinv": #setinv <slot> <itemname>
+                if len(command_list) >= 3:
+                    try:
+                        count = int(command_list[3])
+                    except:
+                        count = 1
+                    for player in self.players:
+                        player.inventory.set_item(int(command_list[1]), BlockItemClass(self, count, command_list[2]))
+            elif command_list[0] == "setjumplimit": #setjumplimit <playername> <numjumplimit>
+                if len(command_list) >= 3:
+                    if command_list[1] == "_all":
+                        names = [player.name for player in self.players]
+                    else:
+                        names = [command_list[1]]
+                    for name in names:
+                        player = self.name_to_player(name)
+                        player.num_jump_limit = int(command_list[2])
+            elif command_list[0] == "setgamemode": #setgamemode <gamemodename>
+                if len(command_list) >= 2:
+                    new_gm = command_list[1]
+                    for player in self.players:
+                        player.gamemode_data = gamemodes[new_gm]["default_player_data"].copy()
+                    self.gamemode = new_gm
+                    if new_gm == "tag":
+                        it_player = random.choice([player for player in self.players])
+                        it_player.gamemode_data["it"] = True
+                        self.network_data_handler.send_packet_all("chat_message", it_player.name + " is now It!", GREEN)
+        except:
+            self.log("Server Command Execution Failed: " + text, "ERROR")
     def quit(self):
         self.network_listening_port.stopListening()
         reactor.stop()
@@ -163,7 +204,12 @@ class MapContainerClass():
         return new_map
     def set_block(self, block):
         map = self.loc_to_map(block.rect.topleft)[0]
-        map.map_add_block(block)
+        collisions = pygame.sprite.spritecollide(block, map.all, False)
+        if not collisions:
+            map = self.loc_to_map(block.rect.topleft)[0]
+            map.map_add_block(block)
+            return True
+        return False
     def remove_block(self, data):
         if isinstance(data, BlockClass):
             block = data
