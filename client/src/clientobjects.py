@@ -2,7 +2,6 @@ import pygame, random
 from math import ceil
 from colors import *
 from utils import *
-#from client import game_client
 
 class ClientPlayerClass(pygame.sprite.Sprite):
     def __init__(self, client, name, location = [0,0], **movementargs):
@@ -79,16 +78,17 @@ class ClientBaseItemClass(pygame.sprite.Sprite):
         self.internal_name = internal_name
         self.display_name = display_name
         self.image = None
+        self.size = None
         self.create_image()
     def create_image(self):
-        self.image = pygame.Surface((1, 1), pygame.SRCALPHA).convert_alpha()
+        self.image = pygame.Surface((24, 24), pygame.SRCALPHA).convert_alpha()
 
 class ClientBlockItemClass(ClientBaseItemClass):
     def __init__(self, client, count, internal_name, display_name):
         ClientBaseItemClass.__init__(self, client, count, internal_name, display_name)
-        self.create_image()
+        self.size = self.client.graphics.block_textures[self.internal_name].get_size()
     def create_image(self):
-        self.image = self.client.graphics.block_textures[self.internal_name]
+        self.image = self.client.graphics.block_textures[self.internal_name].copy()
         if self.image.get_size() != (24, 24):
             self.image = pygame.transform.scale(self.image, (24, 24))
         number_surface = self.client.graphics.fonts["corbelb-15"].render(str(self.count), True, BLACK)
@@ -99,8 +99,38 @@ class ClientBlockItemClass(ClientBaseItemClass):
         self.image.blit(number_surface, draw_loc)
 
 class ClientProjectileItemClass(ClientBaseItemClass):
-    def __init__(self, client, internal_name, display_name):
-        ClientBaseItemClass.__init__(self, client, internal_name, display_name)
+    def __init__(self, client, count, internal_name, display_name):
+        ClientBaseItemClass.__init__(self, client, count, internal_name, display_name)
+        self.size = self.client.graphics.projectile_textures[self.internal_name].get_size()
+    def create_image(self):
+        self.image = pygame.Surface((24, 24), pygame.SRCALPHA).convert_alpha()
+        item_img = self.client.graphics.projectile_textures[self.internal_name].copy()
+        if item_img.get_width() > 24 or item_img.get_height() > 24:
+            item_img = pygame.transform.scale(item_img, (24, 24))
+            location = [0,0]
+        else:
+            location = [12 - item_img.get_width() / 2, 12 - item_img.get_height() / 2]
+        self.image.blit(item_img, location)
+        number_surface = self.client.graphics.fonts["corbelb-15"].render(str(self.count), True, BLACK)
+        draw_loc = [self.image.get_width() - number_surface.get_width(), self.image.get_height() - number_surface.get_height()]
+        white_background = pygame.Surface(number_surface.get_size(), pygame.SRCALPHA).convert_alpha()
+        white_background.fill(WHITEFADE)
+        self.image.blit(white_background, draw_loc)
+        self.image.blit(number_surface, draw_loc)
+
+class ClientNormalItemClass(ClientBaseItemClass):
+    def __init__(self, client, count, internal_name, display_name):
+        ClientBaseItemClass.__init__(self, client, count, internal_name, display_name)
+        self.size = self.client.graphics.item_textures[self.internal_name].get_size()
+    def create_image(self):
+        self.image = self.client.graphics.item_textures[self.internal_name].copy()
+        if self.count != 1:
+            number_surface = self.client.graphics.fonts["corbelb-15"].render(str(self.count), True, BLACK)
+            draw_loc = [self.image.get_width() - number_surface.get_width(), self.image.get_height() - number_surface.get_height()]
+            white_background = pygame.Surface(number_surface.get_size(), pygame.SRCALPHA).convert_alpha()
+            white_background.fill(WHITEFADE)
+            self.image.blit(white_background, draw_loc)
+            self.image.blit(number_surface, draw_loc)
 
 class ClientInventoryClass():
     def __init__(self, client, owner, num_slot, row_length):
@@ -130,9 +160,14 @@ class ClientInventoryClass():
         self.items = []
         for item_dict in item_list:
             if item_dict["type"] == "block":
-                item_obj = ClientBlockItemClass(self.client, item_dict["count"], item_dict["internal_name"], item_dict["display_name"])
+                item_class = ClientBlockItemClass
+            elif item_dict["type"] == "projectile":
+                item_class = ClientProjectileItemClass
+            elif item_dict["type"] == "normal":
+                item_class = ClientNormalItemClass
             else:
-                item_obj = ClientBaseItemClass(self.client, item_dict["count"], item_dict["internal_name"], item_dict["display_name"])
+                item_class = ClientBaseItemClass
+            item_obj = item_class(self.client, item_dict["count"], item_dict["internal_name"], item_dict["display_name"])
             self.items.append(item_obj)
 
 class ClientPlayerInventoryClass(ClientInventoryClass):
@@ -200,6 +235,15 @@ class ClientPlayerInventoryClass(ClientInventoryClass):
     def items_from_list(self, list):
         ClientInventoryClass.items_from_list(self, list)
         self.create_item_images()
+    def change_selected_slot(self, change):
+        self.set_selected_slot(self.selected_slot + change)
+    def set_selected_slot(self, set):
+        self.selected_slot = set
+        if self.selected_slot > self.hotbar_size - 1:
+            self.selected_slot = 0
+        elif self.selected_slot < 0:
+            self.selected_slot = self.hotbar_size - 1
+        self.client.network_data_handler.send_packet("slot_selected", self.selected_slot)
     
 class ClientMapGroup():
     def __init__(self, client):
@@ -233,10 +277,11 @@ class ClientMapGroup():
     def send_get_map_packet(self, location):
         self.client.network_data_handler.send_packet("get_map", location)
     def receive_map(self, map_loc, list):
-        map = ClientMapClass(self.client, map_loc, list)
-        self.maps[map_loc] = map
-        if map_loc in self.waiting_maps:
-            self.waiting_maps.remove(map_loc)
+        if map_loc in self.waiting_maps or map_loc in self.maps:
+            map = ClientMapClass(self.client, map_loc, list)
+            self.maps[map_loc] = map
+            if map_loc in self.waiting_maps:
+                self.waiting_maps.remove(map_loc)
     def create_map(self, location, map_list):
         self.maps[location] = ClientMapClass(location, map_list)
     def set_block(self, block):
@@ -285,9 +330,11 @@ class ClientBlockClass(pygame.sprite.Sprite):
         self.name = name
         self.location = location
         self.image = None
+        self.rect = None
         self.load_texture()
     def load_texture(self):
         self.image = self.client.graphics.block_textures[self.name].convert_alpha()
+        self.size = self.image.get_size()
 
 class ClientProjectileClass(pygame.sprite.Sprite):
     pass

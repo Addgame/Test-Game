@@ -1,4 +1,4 @@
-import pygame, sys, datetime, os
+import pygame, sys, datetime, os, json
 from sounds import *
 from graphics import *
 from clientobjects import *
@@ -13,15 +13,12 @@ class ClientClass():
         self.colored_maps = False
         self.show_hud = True
         self.show_list = False
+        self.show_fps = False
         self.player_name = name
-        #self.player = None
-        #self.player = ClientPlayerClass(self, self.player_name)
         self.server_type = server_type
         self.game_state = "login"
-        try:
-            self.log_file = open("..\\data\\client_log.txt", 'a')
-        except:
-            self.log_file = open("..\\data\\client_log.txt", 'w')
+        self.version = "0.1.3"
+        self.log_file = open("..\\data\\client_log.txt", 'a')
         self.load_options()
         self.log("Game Client Started")
         self.mouse_visible = False
@@ -55,7 +52,8 @@ class ClientClass():
         reactor.callLater(1, self.game_loop)
         reactor.run()
     def game_loop(self):
-        self.get_game_input()
+        if self.connected:
+            self.get_game_input()
         self.graphics.draw_screen()
         reactor.callLater(1/float(self.options["fps"]), self.game_loop)
     def load_options(self):
@@ -68,7 +66,7 @@ class ClientClass():
                 try:
                     value = option_pair[1].strip()
                     if value.startswith("["):
-                        value = self.option_string_to_list(value)
+                        value = json.loads(value) #self.option_string_to_list(value)
                     self.options[option_pair[0]] = value
                 except KeyError:
                     self.log("Option {} does not exist!".format(option_pair[0]), "ERROR")
@@ -119,8 +117,10 @@ class ClientClass():
             elif event.type == pygame.VIDEORESIZE:
                 pass #Add manual resize ability
             elif event.type == pygame.JOYHATMOTION:
-                if event.value == (0, 1):
+                if event.value[1] == 1:
                     self.change_input_type()
+                elif event.value[0]:
+                    self.player.inventory.change_selected_slot(event.value[0])
             else:
                 if self.chat_box.show.get():
                     self.get_chat_input(event)
@@ -162,7 +162,10 @@ class ClientClass():
                 self.chat_box.pos = 1
                 self.chat_box.make_image()
             elif event.key == pygame.K_ESCAPE:
-                self.quit()
+                if self.player.inventory.show_full.get():
+                    self.change_inventory_state(False)
+                else:
+                    self.quit()
         if self.input_mode == 'keyboard': #Keyboard only event checks
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_w or event.key == pygame.K_SPACE:
@@ -172,9 +175,7 @@ class ClientClass():
                 elif event.key == pygame.K_d:
                     self.set_move(True, 'right')
                 elif event.key == pygame.K_e:
-                    self.player.inventory.show_full.toggle()
-                    pygame.mouse.set_visible(not self.mouse_visible)
-                    self.mouse_visible = not self.mouse_visible
+                    self.change_inventory_state()
                 elif event.key == pygame.K_LSHIFT:
                     self.set_crouch(True)
                 elif event.key == pygame.K_LCTRL:
@@ -203,15 +204,18 @@ class ClientClass():
                 elif event.button == 3:
                     self.network_data_handler.send_packet("click_event", "secondary", self.cursor.get_point())
                 elif event.button == 4:
-                    self.player.inventory.selected_slot -= 1
-                    if self.player.inventory.selected_slot < 0:
-                        self.player.inventory.selected_slot = self.player.inventory.hotbar_size - 1
-                    self.network_data_handler.send_packet("slot_selected", self.player.inventory.selected_slot)
+                    self.player.inventory.change_selected_slot(-1)
                 elif event.button == 5:
-                    self.player.inventory.selected_slot += 1
-                    if self.player.inventory.selected_slot > self.player.inventory.hotbar_size - 1:
-                        self.player.inventory.selected_slot = 0
-                    self.network_data_handler.send_packet("slot_selected", self.player.inventory.selected_slot)
+                    self.player.inventory.change_selected_slot(1)
+                elif event.button == 7:
+                    self.set_sprint(True)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    self.network_data_handler.send_packet("release_event", "primary", self.cursor.get_point())
+                elif event.button == 3:
+                    self.network_data_handler.send_packet("release_event", "secondary", self.cursor.get_point())
+                elif event.button == 7:
+                    self.set_sprint(False)
         elif self.input_mode == 'controller': #Controller only event checks
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 0:
@@ -260,6 +264,7 @@ class ClientClass():
         if event.type == pygame.KEYDOWN:
             #print("BEFORE:  " + str(self.chat_box.pos) + "  " + self.chat_box.text)
             if event.key == pygame.K_ESCAPE:
+                self.prev_message_num = -1
                 self.chat_box.text = ""
                 self.chat_box.pos = 0
                 changed = True
@@ -331,8 +336,10 @@ class ClientClass():
             if self.chat_box.show.get():
                 pygame.mouse.set_visible(True)
                 self.set_all_movement(False)
+                pygame.key.set_repeat(500, 50)
             else:
                 pygame.mouse.set_visible(False)
+                pygame.key.set_repeat()
         else:
             self.message_group.show_all.set(set)
             self.chat_box.show.set(set)
@@ -341,6 +348,15 @@ class ClientClass():
                 self.set_all_movement(False)
             else:
                 pygame.mouse.set_visible(False)
+    def change_inventory_state(self, set = None):
+        if set == None:
+            self.player.inventory.show_full.toggle()
+            pygame.mouse.set_visible(not self.mouse_visible)
+            self.mouse_visible = not self.mouse_visible
+        else:
+            self.player.inventory.show_full.set(set)
+            pygame.mouse.set_visible(not self.mouse_visible)
+            self.mouse_visible = not self.mouse_visible
     def check_commands(self, text):
         value = False
         if text.startswith("/client "):
@@ -353,6 +369,8 @@ class ClientClass():
                         map.create_image()
                 elif command_list[1] == "show_hud":
                     self.show_hud = string_to_boolean(command_list[2])
+                elif command_list[1] == "show_fps":
+                    self.show_fps = string_to_boolean(command_list[2])
                 elif command_list[1] == "fullscreen":
                     if string_to_boolean(command_list[2]):
                         self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)
@@ -528,14 +546,16 @@ class CursorClass():
     def get_point(self):
         return [self.point_rect.centerx - (self.client.graphics.screen.get_rect().centerx - 15) + self.client.player.rect.x,\
             self.point_rect.centery - (self.client.graphics.screen.get_rect().centery - 15) + self.client.player.rect.y]
-    def draw(self):
-        self.client.graphics.screen.blit(self.image, self.rect)
 
 if __name__ == '__main__':
     pygame.init()
     try:
-        game_client = ClientClass(sys.argv[1], "multiplayer")
-        game_client.start_game_connection(sys.argv[2], sys.argv[3])
+        name = sys.argv[1]
+        ip = sys.argv[2]
+        port = sys.argv[3]
     except:
-        game_client = ClientClass("Addgame", "multiplayer")
-        game_client.start_game_connection('localhost', 8007)
+        name = "Addgame"
+        ip = 'localhost'
+        port = 8007
+    game_client = ClientClass(name, "multiplayer")
+    game_client.start_game_connection(ip, port)

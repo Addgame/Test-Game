@@ -1,9 +1,9 @@
 import pygame
-from projectileData import *
+from itemData import *
 from entity import *
 
 class ProjectileClass(EntityClass):
-    def __init__(self, server, type, velocity, location):
+    def __init__(self, server, type, location, velocity):
         EntityClass.__init__(self, server)
         self.identifier = self.server.identifier_generator.generate()
         self.type = type

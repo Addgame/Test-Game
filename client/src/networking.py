@@ -13,7 +13,7 @@ class GameClientProtocol(LineReceiver):
     def lineReceived(self, line):
         self.factory.client.network_data_handler.receive_data(line)
     def connectionMade(self):
-        self.factory.client.network_data_handler.send_packet("player_name", self.factory.client.player_name)
+        self.factory.client.network_data_handler.send_packet("player_name", self.factory.client.player_name, self.factory.client.version)
 
 class GameClientFactory(ClientFactory):
     def __init__(self, client):
@@ -101,6 +101,8 @@ class DataHandler():
                     player.inventory.items_from_list(items)
             elif packet_type == "player_data_inv_selected_item":
                 pass
+            elif packet_type == "player_data_name_color":
+                self.client.players.names_color[packet["data"][0]] = packet["data"][1]
             elif packet_type == "new_projectile":
                 self.client.projectiles[packet["data"][0]] = packet["data"][1]
             elif packet_type == "projectile_data":
@@ -144,10 +146,7 @@ class DataHandler():
             elif packet_type == "playmusic":
                 self.client.sound.play_music(packet["data"][0])
             elif packet_type == "playsound":
-                try:
-                    self.client.sound.play_sound(packet["data"][0])
-                except:
-                    pass
+                self.client.sound.play_sound(packet["data"][0])
             else:
                 self.client.log("Unknown packet received!: " + packet_type, "WARN")
     def send_packet(self, type, *data):

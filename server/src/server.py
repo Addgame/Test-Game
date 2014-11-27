@@ -1,12 +1,13 @@
 import pygame
 import datetime, sys, random
-from networking import *
 from items import *
+from itemData import *
 from terrain import *
 from player import *
 from colors import *
 from identifier import *
 from projectile import *
+from networking import *
 from gamemodeData import *
 
 class ServerClass():
@@ -14,18 +15,17 @@ class ServerClass():
         self.debug = debug
         pygame.display.set_mode((150,50))
         self.clock = pygame.time.Clock()
-        try:
-            self.log_file = open("..\\data\\server_log.txt", 'a')
-        except:
-            self.log_file = open("..\\data\\server_log.txt", 'w')
+        self.log_file = open("..\\data\\server_log.txt", 'a')
         self.save_directory = "..\\data\\save\\"
+        self.player_permissions = json.load(open("..\\data\\permissions.txt"))
         self.log("Game Server Started!")
         self.FPS = 60
         self.max_player_message_length = 75
         self.timer = 0
         self.NONE_ITEM = BaseItemClass(self, "NONE", 1, "NONE")
         self.gamemode = "freeplay"
-        self.identifier_generator = IdentifierGeneratorClass(self)
+        self.compatible_versions = ["0.1.3"]
+        self.identifier_generator = IdentifierGeneratorClass()
         self.players = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
         self.maps = MapContainerClass(self)
@@ -57,7 +57,7 @@ class ServerClass():
                 elif event.key == pygame.K_2:
                     self.terrain_generator.random_gen()
                 elif event.key == pygame.K_3:
-                    ProjectileClass(self, "missile", [30,2], [0,0])
+                    ProjectileClass(self, "missile", [0,0], [30,2])
                 elif event.key == pygame.K_4:
                     for player in self.players:
                         player.take_damage(10, 'magic')
@@ -67,6 +67,10 @@ class ServerClass():
                 elif event.key == pygame.K_6:
                     for player in self.players:
                         print(player.name, player.gamemode_data)
+                elif event.key == pygame.K_7:
+                    pfile = open("..\\data\\permissions.txt", 'w')
+                    json.dump(self.player_permissions, pfile, indent = 4)
+                    pfile.close()
                 elif event.key == pygame.K_ESCAPE:
                     self.quit()
             elif event.type == pygame.QUIT:
@@ -93,12 +97,25 @@ class ServerClass():
                             gamemodes[self.gamemode]["it_player"] = tagged_player
                             player.gamemode_data["it"] = False
                             player.gamemode_data["cooldown"] = 120
-                            self.network_data_handler.send_packet_all("chat_message", tagged_player.name + " is now It!", GREEN)
+                            self.network_data_handler.send_packet_all("chat_message", tagged_player.name + " is now It!", GREENDARK)
+                            for player in self.players:
+                                if player.gamemode_data["it"]:
+                                    self.network_data_handler.send_packet_all("player_data_name_color", player.name, GREENDARK)
+                                else:
+                                    self.network_data_handler.send_packet_all("player_data_name_color", player.name, WHITE)
                             break
     def name_to_player(self, name):
         for player in self.players:
             if player.name == name:
                 return player
+    def item_name_to_type(self, name):
+        if name in block_data:
+            type = BlockItemClass
+        elif name in projectile_data:
+            type = ProjectileItemClass
+        elif name in item_data:
+            type = NormalItemClass
+        return type
     def update_projectiles(self):
         for projectile in self.projectiles:
             projectile.update()
@@ -115,39 +132,53 @@ class ServerClass():
     def check_commands(self, text, sender):
         command_list = text.split()
         try:
-            if command_list[0] == "killplayer":
+            if command_list[0] == "kill" and self.player_permissions[sender.name] >= 2:
                 if len(command_list) >= 2 and (sender): #killplayer [playername]
                     player = self.name_to_player(command_list[1])
                     player.take_damage(player.health, "nothing")
                 else:
                     player = self.name_to_player(sender.name)
                     player.take_damage(player.health, "self")
-            elif command_list[0] == "playmusic": #playmusic [musicname]
+            elif command_list[0] == "playmusic" and self.player_permissions[sender.name] >= 2: #playmusic [musicname]
                 if len(command_list) >= 2:
                     self.network_data_handler.send_packet_all("playmusic", command_list[1])
                 else:
                     self.network_data_handler.send_packet_all("playmusic", "PorkAnAngel")
-            elif command_list[0] == "playsound": #playsound <soundname>
+            elif command_list[0] == "playsound" and self.player_permissions[sender.name] >= 2: #playsound <soundname>
                 if len(command_list) >= 2:
                     self.network_data_handler.send_packet_all("playsound", command_list[1])
-            elif command_list[0] == "setinv": #setinv <slot> <itemname>
+            elif command_list[0] == "setinv" and self.player_permissions[sender.name] >= 1: #setinv <slot> <itemname> <count>
                 if len(command_list) >= 3:
                     try:
                         count = int(command_list[3])
                     except:
                         count = 1
+                    item_type = self.item_name_to_type(command_list[2])
                     for player in self.players:
-                        player.inventory.set_item(int(command_list[1]), BlockItemClass(self, count, command_list[2]))
-            elif command_list[0] == "setjumplimit": #setjumplimit <playername> <numjumplimit>
-                if len(command_list) >= 3:
-                    if command_list[1] == "_all":
+                        player.inventory.set_item(int(command_list[1]), item_type(self, count, command_list[2]))
+            elif command_list[0] == "setjumplimit" or command_list[0] == "sjl" and self.player_permissions[sender.name] >= 2: #setjumplimit <playername> <numjumplimit>
+                if len(command_list) >= 2:
+                    if len(command_list) == 2:
+                        command_list.append("_all")
+                    if command_list[2] == "_all":
                         names = [player.name for player in self.players]
                     else:
-                        names = [command_list[1]]
+                        names = [command_list[2]]
                     for name in names:
                         player = self.name_to_player(name)
-                        player.num_jump_limit = int(command_list[2])
-            elif command_list[0] == "setgamemode": #setgamemode <gamemodename>
+                        player.num_jump_limit = int(command_list[1])
+            elif command_list[0] == "plevel": #plevel <name> <level>
+                if self.get_player_permission(sender.name) >= 3:
+                    if len(command_list) >= 3:
+                        self.player_permissions[command_list[1]] = int(command_list[2])
+                        self.network_data_handler.send_packet(sender, "chat_message",\
+                            "Set " + command_list[1] + "'s plevel to " + command_list[2] + "!", BLACK)
+                        pfile = open("..\\data\\permissions.txt", 'w')
+                        json.dump(self.player_permissions, pfile, indent = 4)
+                        pfile.close()
+                else:
+                    self.network_data_handler.send_packet(sender, "chat_message", "You do not have permission to run this command!", RED)
+            elif command_list[0] == "gamemode" and self.player_permissions[sender.name] >= 2: #setgamemode <gamemodename>
                 if len(command_list) >= 2:
                     new_gm = command_list[1]
                     for player in self.players:
@@ -157,9 +188,21 @@ class ServerClass():
                         it_player = random.choice([player for player in self.players])
                         it_player.gamemode_data["it"] = True
                         gamemodes[self.gamemode]["it_player"] = it_player
-                        self.network_data_handler.send_packet_all("chat_message", it_player.name + " is now It!", GREEN)
+                        self.network_data_handler.send_packet_all("chat_message", it_player.name + " is now It!", GREENDARK)
+                        for player in self.players:
+                            if player.gamemode_data["it"]:
+                                self.network_data_handler.send_packet_all("player_data_name_color", player.name, GREENDARK)
+                            else:
+                                self.network_data_handler.send_packet_all("player_data_name_color", player.name, WHITE)
         except:
             self.log("Server Command Execution Failed: " + text, "ERROR")
+            self.network_data_handler.send_packet(sender, "chat_message", "An error occurred while performing the command! (/" + text + ")", RED)
+    def get_player_permission(self, name):
+        try:
+            return self.player_permissions[name]
+        except:
+            self.player_permissions[name] = 0
+            return 0
     def quit(self):
         self.network_listening_port.stopListening()
         reactor.stop()
@@ -204,6 +247,13 @@ class MapContainerClass():
         new_map.nonsolid.add(map1.nonsolid, map2.nonsolid)
         new_map.damaging.add(map1.damaging, map2.damaging)
         return new_map
+    def get_block_at(self, location):
+        map = self.loc_to_map(location)[0]
+        #collisions = []
+        for block in map.all:
+            if block.rect.collidepoint(location):
+                #collisions.append(block)
+                return block
     def set_block(self, block):
         map = self.loc_to_map(block.rect.topleft)[0]
         collisions = pygame.sprite.spritecollide(block, map.all, False)
@@ -221,6 +271,7 @@ class MapContainerClass():
 class MapClass(): #Each Map is a 512 by 512 area
     def __init__(self, server, location = None):
         self.server = server
+        self.server.MapClass = self.__class__
         self.map_loc = location
         self.all = pygame.sprite.Group()
         self.solid = pygame.sprite.Group()

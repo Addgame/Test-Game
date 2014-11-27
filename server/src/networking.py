@@ -13,13 +13,16 @@ class GameServerProtocol(LineReceiver):
         self.addr = addr
         self.name = ""
         self.valid_login = False
-    def login(self, name):
+    def login(self, name, version):
         #Validate username with password here
+        if version not in self.factory.server.compatible_versions:
+            self.factory.data_handler.send_packet(self, "login_fail", "Incompatible Version!")
+            return False
         if name in self.factory.protocols:
             self.factory.data_handler.send_packet(self, "login_fail", "A player with this name is already in the game!")
             self.transport.loseConnection()
             return False
-        if name == "_all" or len(name) > 24:
+        if name == "_all" or len(name) > 24 or len(name) < 4:
             self.factory.data_handler.send_packet(self, "login_fail", "Illegal name!")
             self.transport.loseConnection()
             return False
@@ -84,7 +87,7 @@ class DataHandler():
         packet_type = packet["type"]
         if not protocol.valid_login:
             if packet_type == "player_name":
-                valid = protocol.login(packet["data"][0])
+                valid = protocol.login(packet["data"][0], packet["data"][1])
         else:
             if packet_type == "player_movement_input": #Game handling packets here
                 player = self.server.name_to_player(protocol.name)
@@ -96,7 +99,8 @@ class DataHandler():
                 button = packet["data"][0]
                 location = packet["data"][1]
                 player = self.server.name_to_player(protocol.name)
-                player.inventory.use_item(button, location)
+                if not player.movement["dead"]:
+                    player.inventory.use_item(button, location)
             elif packet_type == "slot_selected":
                 slot = int(packet["data"][0])
                 player = self.server.name_to_player(protocol.name)

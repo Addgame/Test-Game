@@ -9,27 +9,24 @@ class GraphicsEngineClass():
         self.load_projectile_textures()
         self.load_hud_textures()
         self.load_block_textures()
+        self.load_item_textures()
         self.load_player_skins("_all")
         self.fonts = { \
             "corbel-15": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 15), \
             "corbelb-15": pygame.font.Font("..\\data\\fonts\\corbelb.ttf", 15), \
             "corbel-25": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 25), \
             }
-        print(self.fonts["corbel-15"].size("Addgame"))
-        print(self.fonts["corbel-15"].size("REALLYLONGNAMEFORTESTING"))
-        print(self.fonts["corbelb-15"].size("Addgame"))
-        print(self.fonts["corbelb-15"].size("REALLYLONGNAMEFORTESTING"))
         if screen != None:
             size = screen.get_size()
         self.create_display(size)
         self.client.clock.tick(float(self.client.options["fps"]))
     def create_display(self, size, flags = 0):
         self.screen = pygame.display.set_mode(size, flags)
-        pygame.display.set_caption("Unnamed Game v.0.1.3")
+        pygame.display.set_caption("Dungeon Derps v." + self.client.version)
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
-        self.connection_lost_text = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
+        self.connection_lost_screen = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
         try:
             self.client.message_group.update_display = True
             self.client.message_group.update_location = True
@@ -41,8 +38,10 @@ class GraphicsEngineClass():
             self.draw_game_screen()
         elif self.client.game_state == "connection_lost":
             self.screen.fill(BLACK)
-            self.screen.blit(self.connection_lost_text, self.connection_lost_text.get_rect( \
+            self.screen.blit(self.connection_lost_screen, self.connection_lost_screen.get_rect( \
                 center=(self.screen.get_rect().centerx, self.screen.get_rect().centery-10)))
+            if self.client.show_fps:
+                self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
             pygame.display.update()
             self.client.clock.tick()#float(self.client.options["fps"]))
     def draw_game_screen(self):
@@ -55,6 +54,8 @@ class GraphicsEngineClass():
         if self.client.show_hud:
             self.draw_hud()
         self.draw_cursor()
+        if self.client.show_fps:
+            self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
         pygame.display.update()
         self.client.clock.tick()#float(self.client.options["fps"]))
     def draw_blocks(self):
@@ -82,7 +83,7 @@ class GraphicsEngineClass():
     def draw_chat_box(self):
         self.client.chat_box.draw()
     def draw_cursor(self):
-        self.client.cursor.draw()
+        self.screen.blit(self.client.cursor.image, self.client.cursor.rect)
     def draw_hud(self):
         location = [1, 1]
         hearts = self.client.player.health / 20.0
@@ -98,11 +99,11 @@ class GraphicsEngineClass():
             for slot in range(len(self.client.players.names)):
                 self.screen.blit(self.hud_textures["listslot"],\
                     [(self.screen.get_width() / 2) - self.hud_textures["listslot"].get_width() / 2, (slot * 22) + 4])
-                self.screen.blit(self.fonts["corbelb-15"].render(self.client.players.names[slot], True, WHITE), \
+                self.screen.blit(self.fonts["corbelb-15"].render(self.client.players.names[slot], True, self.client.players.names_color[self.client.players.names[slot]]), \
                     [(self.screen.get_width() / 2) - self.hud_textures["listslot"].get_width() / 2 + 4, (slot * 22) + 8])
+        self.client.player.inventory.draw()
         if self.client.player.movement["dead"] == True:
             self.screen.blit(self.death_screen, [0,0])
-        self.client.player.inventory.draw()
     def draw_projectiles(self):
         for identifier, data in self.client.projectiles.items():
             image = self.projectile_textures[data["type"]]
@@ -110,7 +111,7 @@ class GraphicsEngineClass():
                 image = pygame.transform.flip(image, True, False)
             #self.screen.blit(image, data["location"])
             self.screen.blit(image, [data["location"][0] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15), \
-                data["location"][1] - self.client.player.rect.x + (self.screen.get_rect().centerx - 15)])
+                data["location"][1] - self.client.player.rect.y + (self.screen.get_rect().centery - 15)])
     def load_player_skins(self, name):
         if name == "_all":
             for player in self.client.players:
@@ -121,7 +122,7 @@ class GraphicsEngineClass():
         for player in self.client.players:
             player.update_image()
     def load_block_textures(self):
-        self.block_textures = {"dirt": None, "grass": None, "spike": None, "stone": None, "test_block": None}
+        self.block_textures = {"dirt": None, "dirt_wall": None, "grass": None, "spike": None, "stone": None, "test_block": None}
         for key in self.block_textures:
             try:
                 self.block_textures[key] = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\blocks\\" + key + ".png")
@@ -144,3 +145,10 @@ class GraphicsEngineClass():
                 self.projectile_textures[key] = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\projectiles\\" + key + ".png")
             except:
                 self.projectile_textures[key] = pygame.image.load("..\\data\\textures\\packs\\default\\projectiles\\" + key + ".png")
+    def load_item_textures(self):
+        self.item_textures = {"wand_gold": None}
+        for key in self.item_textures:
+            try:
+                self.item_textures[key] = pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\items\\" + key + ".png")
+            except:
+                self.item_textures[key] = pygame.image.load("..\\data\\textures\\packs\\default\\items\\" + key + ".png")

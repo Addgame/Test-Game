@@ -2,8 +2,7 @@ import string
 import random
 
 class IdentifierGeneratorClass():
-    def __init__(self, server):
-        self.server = server
+    def __init__(self):
         self.used_identifiers = []
         self.characters = string.ascii_uppercase + string.digits
     def generate(self):

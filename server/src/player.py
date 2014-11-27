@@ -1,6 +1,5 @@
 import pygame
 import items
-from server import *
 from entity import *
 from inventory import *
 from gamemodeData import *
@@ -44,6 +43,8 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         return self.server.network_factory.protocols[self.name]
     def update_physics(self):
         if not(self.movement["dead"]):
+            if self.damage_lockout["block"]:
+                self.damage_lockout["block"] -= 1
             temp_rect = self.rect.copy()
             time = 1./30
             y_acceleration = 9.8
@@ -59,6 +60,11 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                 y_dist = 30
             self.rect.y += y_dist
             self.on_ground = False
+            collisions = self.check_collisions("damaging_rect")
+            for dblock in collisions:
+                if not self.damage_lockout["block"]:
+                    self.take_damage(dblock.damage, dblock.block_name)
+                    self.damage_lockout["block"] += 5
             collisions = self.check_collisions("solid")
             for cblock in collisions:
                 if self.velocity[1] > 0:
@@ -102,6 +108,11 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             self.velocity[0] = self.velocity[0] + x_acceleration * time
             x_dist = x_dist * 100
             self.rect.x += x_dist
+            collisions = self.check_collisions("damaging_rect")
+            for dblock in collisions:
+                if not self.damage_lockout["block"]:
+                    self.take_damage(dblock.damage, dblock.block_name)
+                    self.damage_lockout["block"] += 5
             collisions = self.check_collisions("solid")
             for cblock in collisions:
                 if self.velocity[0] > 0:
@@ -203,7 +214,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                     self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
             if self.rect.center != temp_rect_center:
                 self.server.network_data_handler.send_packet_all("player_data_location", self.name, [self.rect.x, self.rect.y])
-    def take_damage(self, amount, kind, text = "was killed by"):
+    def take_damage(self, amount, kind, death_text = "was killed by"):
         self.health -= amount #TODO: Adjust damage for items/skills/potions
         self.last_damage = kind
         print(self.name + ": " + str(self.health))
@@ -211,7 +222,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         if self.health <= 0:
             self.die()
             #print("{} was killed by {}".format(self.name, self.last_damage))
-            self.server.network_data_handler.send_packet_all("chat_message", "{} {} {}".format(self.name, text, self.last_damage))
+            self.server.network_data_handler.send_packet_all("chat_message", "{} {} {}".format(self.name, death_text, self.last_damage))
     def die(self):
         self.set_all_movement(False)
         self.lock_controls = True
@@ -226,6 +237,11 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         if self.server.gamemode == "tag":
             gamemodes[self.server.gamemode]["it_player"] = False
             self.gamemode_data["it"] = True
+            for player in self.server.players:
+                if player.gamemode_data["it"]:
+                    self.server.network_data_handler.send_packet_all("player_data_name_color", player.name, GREENDARK)
+                else:
+                    self.server.network_data_handler.send_packet_all("player_data_name_color", player.name, WHITE)
     def respawn(self):
         self.lock_controls = False
         self.set_jump(False)
@@ -280,7 +296,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
         elif value == False and self.movement["crouch"] == True:
             self.rect.height += 32
             self.rect.y -= 32
-            if self.check_collisions("all") != []:
+            if self.check_collisions("solid") != []:
                 self.rect.height -= 32
                 self.rect.y += 32
                 self.attempt_stand = True
@@ -315,7 +331,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             #if self.jump_length > 0:
             #    self.jump_length = self.jump_limit
     def set_sprint(self, value):
-        if value == True and self.movement["sprint"] == False and self.movement["crouch"] == False and self.lock_controls == False:
+        if value and not self.movement["sprint"] and not self.movement["crouch"] and self.on_ground and not self.lock_controls:
             self.movement["sprint"] = True
             self.attempt_sprint = False
             if self.movement["left"]:
@@ -328,7 +344,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             elif self.movement["right"]:
                 self.velocity[0] += self.movement["speed"]
             return True
-        elif value == True and self.movement["crouch"] == True and self.attempt_sprint == False:
+        elif value == True and (self.movement["crouch"] or not self.on_ground)and self.attempt_sprint == False:
             self.attempt_sprint = True
         elif value == False and self.attempt_sprint == True:
             self.attempt_sprint = False

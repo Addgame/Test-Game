@@ -21,7 +21,10 @@ class SoundEngineClass():
             self.sounds["death"].set_volume(float(self.client.options["sound_volume"]))
             self.sounds["myah"].set_volume(1.)
     def play_sound(self, name):
-        self.sounds[name].play()
+        try:
+            self.sounds[name].play()
+        except:
+            self.client.log("Sound (" + name + ") could not be played!", "ERROR")
     def play_music(self, music = "PorkAnAngel"):
         try:
             pygame.mixer.music.load("..\\data\\sounds\\" + music + ".ogg")

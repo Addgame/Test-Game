@@ -1,4 +1,4 @@
-import pygame
+import pygame, math
 from items import *
 
 class InventoryClass():
@@ -50,12 +50,28 @@ class PlayerInventoryClass(InventoryClass):
         self.update_selected(selected_slot)
     def use_item(self, type, location):
         if not self.owner.movement["dead"]:
-            if type == "secondary":
+            if type == "primary":
+                if math.sqrt(((location[0] - self.owner.rect.centerx) ** 2) + ((location[1] - self.owner.rect.centery) ** 2)) <= 192:
+                    block = self.server.maps.get_block_at(location)
+                    if block:
+                        block.destroy()
+            elif type == "secondary":
                 if isinstance(self.selected_item, BlockItemClass):
-                    block = self.selected_item.place(location)
-                    if block.placed:
-                        self.reduce_item_stack(self.selected_slot)
-                        self.update_selected(self.selected_slot)
+                    if math.sqrt(((location[0] - self.owner.rect.centerx) ** 2) + ((location[1] - self.owner.rect.centery) ** 2)) <= 192:
+                        block = self.selected_item.place(location)
+                        if block.placed:
+                            self.reduce_item_stack(self.selected_slot)
+                            self.update_selected(self.selected_slot)
+                elif isinstance(self.selected_item, ProjectileItemClass):
+                    if location[0] - self.owner.rect.x > 0:
+                        x_factor = 1
+                    else:
+                        x_factor = -1
+                    projectile = self.selected_item.launch([self.owner.rect.centerx + 17 * x_factor, self.owner.rect.centery], [30 * x_factor, 1])
+                    self.reduce_item_stack(self.selected_slot)
+                    self.update_selected(self.selected_slot)
+    def stop_use_item(self, type, location):
+        pass
     def reduce_item_stack(self, slot):
         InventoryClass.reduce_item_stack(self, slot)
         self.server.network_data_handler.send_packet(self.owner.get_protocol(), "player_data_inv_items", self.owner.name, self.items_to_list())
