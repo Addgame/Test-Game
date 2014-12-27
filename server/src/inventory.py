@@ -62,6 +62,9 @@ class PlayerInventoryClass(InventoryClass):
                         if block.placed:
                             self.reduce_item_stack(self.selected_slot)
                             self.update_selected(self.selected_slot)
+                            for player in self.server.players:
+                                if math.sqrt(((location[0]-player.rect.x) ** 2) + ((location[1]-player.rect.y) ** 2)) <= 300:
+                                    self.server.network_data_handler.send_packet(player.get_protocol(), "playsound", "pop")
                 elif isinstance(self.selected_item, ProjectileItemClass):
                     if location[0] - self.owner.rect.x > 0:
                         x_factor = 1

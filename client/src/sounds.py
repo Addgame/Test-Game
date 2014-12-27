@@ -7,13 +7,14 @@ class SoundEngineClass():
         self.load_sounds()
     def load_sounds(self):
         sound_dir = "..\\data\\sounds\\"
-        self.sounds = {"death": None, "myah": None}
+        self.sounds = {"death": None, "myah": None, "pop": None}
         try:
             if self.client.player_name.lower() == 'bohunk':
                 self.sounds["death"] = pygame.mixer.Sound(sound_dir + "joe_death.wav")
             else:
                 self.sounds["death"] = pygame.mixer.Sound(sound_dir + "death.wav")
             self.sounds["myah"] = pygame.mixer.Sound(sound_dir + "myah.wav")
+            self.sounds["pop"] = pygame.mixer.Sound(sound_dir + "pop.wav")
         except:
             self.client.log("Sounds could not be loaded!", "ERROR")
             self.mute()

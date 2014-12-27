@@ -8,7 +8,7 @@ from utils import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 class ClientClass():
-    def __init__(self, name, server_type, screen = None, debug = False):
+    def __init__(self, name, server_type, options = None, screen = None, debug = False):
         self.debug = debug
         self.colored_maps = False
         self.show_hud = True
@@ -19,7 +19,10 @@ class ClientClass():
         self.game_state = "login"
         self.version = "0.1.3"
         self.log_file = open("..\\data\\client_log.txt", 'a')
-        self.load_options()
+        if not options:
+            self.load_options()
+        else:
+            self.options = options
         self.log("Game Client Started")
         self.mouse_visible = False
         self.input_mode = None
@@ -311,7 +314,9 @@ class ClientClass():
                 self.chat_box.pos = len(self.chat_box.text)
                 changed = True
             elif event.key == pygame.K_RETURN:
-                self.previous_messages.insert(0, self.chat_box.text)
+                if len(self.previous_messages) == 0 or self.chat_box.text != self.previous_messages[0]:
+                    self.previous_messages.insert(0, self.chat_box.text)
+                self.prev_message_num = -1
                 self.chat_box.send()
             elif event.key == pygame.K_RSHIFT or event.key == pygame.K_LSHIFT:
                 pass
@@ -319,13 +324,29 @@ class ClientClass():
                 self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + "    " + self.chat_box.text[self.chat_box.pos:]
                 self.chat_box.pos += 4
                 changed = True
+            elif event.key == pygame.K_LCTRL or event.key == pygame.K_RCTRL:
+                pass
             else:
                 self.prev_message_num = -1
-                if len(self.chat_box.text) < self.chat_box.char_limit:
-                    character = str(event.unicode)
-                    self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + character + self.chat_box.text[self.chat_box.pos:]
-                    self.chat_box.pos += 1
+                if event.unicode == '\x16': #Paste
+                    data = get_clipboard()
+                    if len(self.chat_box.text + data) > self.chat_box.char_limit:
+                        data = data[:self.chat_box.char_limit - len(self.chat_box.text)]
+                    self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + data + self.chat_box.text[self.chat_box.pos:]
+                    self.chat_box.pos += len(data)
                     changed = True
+                elif event.unicode == '\x03': #Copy
+                    set_clipboard(self.chat_box.text)
+                elif event.unicode == '\x18': #Cut
+                    set_clipboard(self.chat_box.text)
+                    self.chat_box.text = ""
+                    self.chat_box.pos = 0
+                else:
+                    if len(self.chat_box.text) < self.chat_box.char_limit:
+                        character = str(event.unicode)
+                        self.chat_box.text = self.chat_box.text[:self.chat_box.pos] + character + self.chat_box.text[self.chat_box.pos:]
+                        self.chat_box.pos += 1
+                        changed = True
             if changed:
                 self.chat_box.make_image()
             #print("AFTER:  " + str(self.chat_box.pos) + "  " + self.chat_box.text)
