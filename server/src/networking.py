@@ -13,8 +13,7 @@ class GameServerProtocol(LineReceiver):
         self.addr = addr
         self.name = ""
         self.valid_login = False
-    def login(self, name, version):
-        #Validate username with password here
+    def login(self, name, password, version):
         if version not in self.factory.server.compatible_versions:
             self.factory.data_handler.send_packet(self, "login_fail", "Incompatible Version!")
             return False
@@ -25,6 +24,16 @@ class GameServerProtocol(LineReceiver):
         if name == "_all" or len(name) > 24 or len(name) < 4:
             self.factory.data_handler.send_packet(self, "login_fail", "Illegal name!")
             self.transport.loseConnection()
+            return False
+        if len(password) < 4 or len(password) > 24:
+            self.factory.data_handler.send_packet(self, "login_fail", "Illegal password!")
+            self.transport.loseConnection()
+            return False
+        if name not in self.factory.server.login_data:
+            self.factory.server.login_data[name] = password
+            self.factory.server.save_login_data()
+        if self.factory.server.login_data[name] != password:
+            self.factory.data_handler.send_packet(self, "login_fail", "Incorrect password!")
             return False
         self.name = name
         self.valid_login = True
@@ -86,8 +95,8 @@ class DataHandler():
     def handle_packet(self, protocol, packet):
         packet_type = packet["type"]
         if not protocol.valid_login:
-            if packet_type == "player_name":
-                valid = protocol.login(packet["data"][0], packet["data"][1])
+            if packet_type == "login":
+                valid = protocol.login(packet["data"][0], packet["data"][1], packet["data"][2])
         else:
             if packet_type == "player_movement_input": #Game handling packets here
                 player = self.server.name_to_player(protocol.name)

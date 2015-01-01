@@ -40,10 +40,10 @@ class GraphicsEngineClass():
             self.screen.fill(BLACK)
             self.screen.blit(self.connection_lost_screen, self.connection_lost_screen.get_rect( \
                 center=(self.screen.get_rect().centerx, self.screen.get_rect().centery-10)))
-            if self.client.show_fps:
-                self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
-            pygame.display.update()
-            self.client.clock.tick()#float(self.client.options["fps"]))
+        if self.client.show_fps:
+            self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
+        pygame.display.update()
+        self.client.clock.tick()
     def draw_game_screen(self):
         self.draw_background()
         self.draw_blocks()
@@ -54,10 +54,10 @@ class GraphicsEngineClass():
         if self.client.show_hud:
             self.draw_hud()
         self.draw_cursor()
-        if self.client.show_fps:
-            self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
-        pygame.display.update()
-        self.client.clock.tick()#float(self.client.options["fps"]))
+##        if self.client.show_fps:
+##            self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
+##        pygame.display.update()
+##        self.client.clock.tick()#float(self.client.options["fps"]))
     def draw_blocks(self):
         for x in range(self.client.player.current_map[0] - 2, self.client.player.current_map[0] + 3):
             for y in range(self.client.player.current_map[1] - 1, self.client.player.current_map[1] + 2):

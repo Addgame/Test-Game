@@ -7,7 +7,8 @@ class InputBox(GuiObject):
         self.text = text
         self.text_color = params.get("text_color", BLACK)
         self.pos = len(text)
-        self.font = params.get("font", pygame.font.Font("..\\data\\fonts\\corbel.ttf", 20))
+        self.font_size = params.get("font_size", 20)
+        self.font = params.get("font", pygame.font.Font("..\\data\\fonts\\corbel.ttf", self.font_size))
         size = self.font.size("a" * char_size)
         params["size"] = (size[0] + 4, size[1] + 4)
         params["focusable"] = True
@@ -17,6 +18,11 @@ class InputBox(GuiObject):
         GuiObject.__init__(self, **params)
         self.create_bg_image()
         self.update_image()
+    def get_text(self):
+        return self.text
+    def set_text(self, text):
+        self.text = text
+        self.pos = len(text)
     def handle_event(self, event):
         changed = False
         if event.type == pygame.KEYDOWN:

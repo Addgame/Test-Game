@@ -3,7 +3,6 @@ from twisted.internet import reactor
 from twisted.internet.protocol import ClientFactory
 import base64
 import json
-from client import MessageClass
 from clientobjects import ClientBlockItemClass
 from colors import *
 
@@ -13,7 +12,7 @@ class GameClientProtocol(LineReceiver):
     def lineReceived(self, line):
         self.factory.client.network_data_handler.receive_data(line)
     def connectionMade(self):
-        self.factory.client.network_data_handler.send_packet("player_name", self.factory.client.player_name, self.factory.client.version)
+        self.factory.client.network_data_handler.send_packet("login", self.factory.client.player_name, self.factory.client.password, self.factory.client.version)
 
 class GameClientFactory(ClientFactory):
     def __init__(self, client):
@@ -29,12 +28,14 @@ class GameClientFactory(ClientFactory):
         self.client.log("Could not connect to server!", "ERROR")
         if self.client.debug:
             self.client.log("REASON: " + str(reason), "DEBUG")
+        self.client.disconnect()
     def clientConnectionLost(self, connector, reason):
         self.client.log("Disconnected from server!")
         if self.client.debug:
             self.client.log("REASON: " + str(reason), "DEBUG")
         self.client.connected = False
-        self.client.game_state = "connection_lost"
+        if not self.client.disconnecting:
+            self.client.game_state = "connection_lost"
 
 class DataHandler():
     def __init__(self, client):
@@ -48,6 +49,7 @@ class DataHandler():
         encoded = base64.b64encode(data)
         self.client.network_protocol.sendLine(encoded)
     def handle_packet(self, packet):
+        from client import MessageClass
         if self.client.debug:
             self.client.log("RECEIVED PACKET: " + str(packet))
         packet_type = packet["type"]
@@ -57,7 +59,7 @@ class DataHandler():
             elif packet_type == "login_fail":
                 self.client.log("Login Failed. Reason: " + packet["data"][0], "ERROR")
                 self.client.network_protocol.transport.loseConnection()
-                self.client.quit()
+                self.client.disconnect()
         elif self.client.game_state == "ingame":
             if packet_type == "player_list":
                 for name in packet["data"][0]:

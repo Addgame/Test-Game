@@ -1,5 +1,5 @@
 import pygame
-import datetime, sys, random
+import datetime, sys, random, base64
 from items import *
 from itemData import *
 from terrain import *
@@ -18,13 +18,18 @@ class ServerClass():
         self.log_file = open("..\\data\\server_log.txt", 'a')
         self.save_directory = "..\\data\\save\\"
         self.player_permissions = json.load(open("..\\data\\permissions.txt"))
+        try:
+            self.login_data = json.loads(base64.b64decode(open("..\\data\\" + base64.b64encode("player_logins") + ".dat")))
+        except:
+            self.login_data = {}
+            self.save_login_data
         self.log("Game Server Started!")
         self.FPS = 60
         self.max_player_message_length = 75
         self.timer = 0
         self.NONE_ITEM = BaseItemClass(self, "NONE", 1, "NONE")
         self.gamemode = "freeplay"
-        self.compatible_versions = ["0.1.3"]
+        self.compatible_versions = ["0.2.0"]
         self.identifier_generator = IdentifierGeneratorClass()
         self.players = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
@@ -81,6 +86,8 @@ class ServerClass():
         log_message = time_stamp + message
         print(log_message)
         self.log_file.write(log_message + '\n')
+    def save_login_data(self):
+        open("..\\data\\" + base64.b64encode("player_logins") + ".dat", 'w').write(base64.b64encode(json.dumps(self.login_data)))
     def update_players(self):
         for player in self.players:
             player.update_physics()
@@ -204,6 +211,7 @@ class ServerClass():
             self.player_permissions[name] = 0
             return 0
     def quit(self):
+        self.log("Game Server Closed!")
         self.network_listening_port.stopListening()
         reactor.stop()
 

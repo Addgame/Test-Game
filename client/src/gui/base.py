@@ -1,7 +1,7 @@
 import pygame
 
 class GuiObject():
-    def __init__(self, **params): #container, location, size):
+    def __init__(self, **params):
         self.container = params.get("container", None)
         self.rect = pygame.Rect(params.get("location", [0,0]), params.get("size", (0,0)))
         self.focused = params.get("focused", False)
@@ -22,7 +22,7 @@ class GuiObject():
 class Container():
     def __init__(self, screen, objects = []):
         self.screen = screen
-        self.objects = objects
+        self.objects = []#objects
         self.focused_object = None
         self.pressed = []
     def draw(self):
@@ -34,6 +34,13 @@ class Container():
             self.set_focus(obj)
     def remove(self, obj):
         self.objects.remove(obj)
+        if obj in self.pressed:
+            self.pressed.remove(obj)
+        if obj is self.focused_object:
+            self.set_focus()
+    def empty(self):
+        for obj in list(self.objects):
+            self.remove(obj)
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             used = False

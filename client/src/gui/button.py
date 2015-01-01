@@ -6,7 +6,8 @@ class Button(GuiObject):
     def __init__(self, text = "", **params):
         self.text = text
         self.text_color = params.get("text_color", BLACK)
-        self.font = params.get("font", pygame.font.Font("..\\data\\fonts\\corbelb.ttf", 20))
+        font_size = params.get("font_size", 20)
+        self.font = params.get("font", pygame.font.Font("..\\data\\fonts\\corbelb.ttf", font_size))
         if not params.get("size", None):
             size = self.font.size("a" * len(text))
             params["size"] = (size[0] + 10, size[1] + 10)
@@ -38,6 +39,11 @@ class Button(GuiObject):
         for call in self.calls:
             call.call()
 
+class ToggleButton(Button):
+    def __init__(self, text = "", **params):
+        Button(text, **params)
+        self.text
+
 class CheckBox(GuiObject):
     def __init__(self, checked = False, **params):
-        pass
+        self.checked = checked

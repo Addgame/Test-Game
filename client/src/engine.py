@@ -1,8 +1,9 @@
-import pygame, json, datetime
+import pygame, json, datetime, base64, sys
 from colors import *
 from gui.base import *
 from menus import *
-import base64, json
+from client import ClientClass
+from twisted.internet import reactor
 
 class Game():
     def __init__(self):
@@ -10,6 +11,9 @@ class Game():
         self.log_file = open("..\\data\\client_log.txt", 'a')
         self.load_options()
         self.create_display(self.options["resolution"])
+        self.state = "menus"
+        self.login_info = {"username":"", "password":""}
+        self.connection_info = {"ip":"", "port":""}
         pygame.key.set_repeat(500, 50)
     def load_options(self):
         self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720]}
@@ -37,29 +41,73 @@ class Game():
         self.log_file.write(log_message + '\n')
     def create_display(self, size, flags = 0):
         self.screen = pygame.display.set_mode(size, flags)
+        self.temp_screen = pygame.Surface((1280, 720))
         pygame.display.set_caption("Dungeon Derps v." + self.version)
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
     def quit(self):
-        pass
+        reactor.stop()
     def run(self):
-        bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\main_menu_bg.png")
-        timer = pygame.time.Clock()
-        menu = Container(self.screen)
+        self.bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\main_menu_bg.png")
+        self.clock = pygame.time.Clock()
+        self.menu = Container(self.temp_screen)
         try:
-            data_file = open("..\\data\\" + base64.b64encode("player") + ".dat")
-            data = json.loads(base64.b64decode(data_file.read()))
-            data_file.close()
-            username = data[0]
-            password = base64.b64decode(data[1])
+            login_file = open("..\\data\\" + base64.b64encode("login") + ".dat")
+            login_data = json.loads(base64.b64decode(login_file.read()))
+            login_file.close()
+            self.login_info["username"] = login_data[0]
+            self.login_info["password"] = base64.b64decode(login_data[1])
         except:
-            username = "Username"
-            password = "Password"
-        LoginMenu(menu, username, password)
-        while True:
+            self.login_info["username"] = "Username"
+            self.login_info["password"] = "Password"
+        try:
+            connection_file = open("..\\data\\" + base64.b64encode("connection") + ".dat")
+            connection_data = json.loads(base64.b64decode(connection_file.read()))
+            connection_file.close()
+            self.connection_info["ip"] = connection_data[0]
+            self.connection_info["port"] = connection_data[1]
+        except:
+            self.connection_info["ip"] = "127.0.0.1"
+            self.connection_info["port"] = "8007"
+        LoginMenu(self.menu, self.login_info["username"], self.login_info["password"])
+        reactor.callLater(0, self.loop)
+        reactor.run()
+    def loop(self):
+        if self.state == "ingame":
+            if pygame.event.peek(pygame.USEREVENT):
+                self.state = "menus"
+                self.menu.empty()
+                MainMenu(self.menu)
+            self.game_client.game_loop()
+            self.loop_call = reactor.callLater(1./self.game_client.options["fps"], self.loop)
+        elif self.state == "menus":
             for event in pygame.event.get():
-                menu.handle_event(event)
-            self.screen.fill(WHITE)
-            self.screen.blit(bg_image, (0,0))
-            menu.draw()
+                if event.type == pygame.USEREVENT and (event.name == "login" or event.name == "main_menu"):
+                    if event.name == "login":
+                        self.login_info = event.data
+                    self.menu.empty()
+                    MainMenu(self.menu)
+                elif event.type == pygame.USEREVENT and event.name == "logout":
+                    self.menu.empty()
+                    LoginMenu(self.menu, self.login_info["username"], self.login_info["password"])
+                elif event.type == pygame.USEREVENT and event.name == "play":
+                    self.menu.empty()
+                    ConnectMenu(self.menu, self.connection_info["ip"], self.connection_info["port"])
+                elif event.type == pygame.USEREVENT and event.name == "connect":
+                    self.connection_info = event.data
+                    self.game_client = ClientClass(self.login_info["username"], self.login_info["password"], "multiplayer", self.version, self.options, self.screen)
+                    self.game_client.start_game_connection(self.connection_info["ip"], self.connection_info["port"])
+                    self.game_client.game_loop()
+                    self.state = "ingame"
+                elif (event.type == pygame.USEREVENT and event.name == "quit") or (event.type == pygame.QUIT)\
+                  or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    self.quit()
+                else:
+                    self.menu.handle_event(event)
+            self.temp_screen.fill(WHITE)
+            self.temp_screen.blit(self.bg_image, (0,0))
+            self.menu.draw()
+            #pygame.transform.scale(self.temp_screen, self.screen.get_size(), self.screen)
+            self.screen.blit(self.temp_screen, (0,0))
             pygame.display.update()
-            timer.tick(30)
+            self.clock.tick()
+            self.loop_call = reactor.callLater(1./30, self.loop)

@@ -8,16 +8,17 @@ from utils import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 class ClientClass():
-    def __init__(self, name, server_type, options = None, screen = None, debug = False):
+    def __init__(self, name, password, server_type, version, options = None, screen = None, debug = False):
         self.debug = debug
         self.colored_maps = False
         self.show_hud = True
         self.show_list = False
         self.show_fps = False
         self.player_name = name
+        self.password = password
         self.server_type = server_type
         self.game_state = "login"
-        self.version = "0.1.3"
+        self.version = version
         self.log_file = open("..\\data\\client_log.txt", 'a')
         if not options:
             self.load_options()
@@ -47,18 +48,20 @@ class ClientClass():
         self.network_factory = None
         self.network_protocol = None
         self.connected = False
+        self.disconnecting = False
     def start_game_connection(self, ip, port = 8007, timeout = 15):
         factory = GameClientFactory(self)
         self.network_connector = reactor.connectTCP(ip, int(port), factory, timeout)
         self.network_factory = factory
         self.network_protocol = factory.protocol
-        reactor.callLater(1, self.game_loop)
-        reactor.run()
+        #reactor.callLater(1, self.game_loop)
     def game_loop(self):
         if self.connected:
             self.get_game_input()
         self.graphics.draw_screen()
-        reactor.callLater(1/float(self.options["fps"]), self.game_loop)
+        if self.game_state != "quitting":
+            pass
+            #self.delayed_call = reactor.callLater(1/float(self.options["fps"]), self.game_loop)
     def load_options(self):
         self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720]}
         try:
@@ -97,8 +100,14 @@ class ClientClass():
         print(log_message)
         self.log_file.write(log_message + '\n')
     def quit(self):
-        self.network_connector.disconnect()
         reactor.stop()
+    def disconnect(self):
+        self.log("Game Client Closed!")
+        self.disconnecting = True
+        self.network_connector.disconnect()
+        pygame.mouse.set_visible(True)
+        pygame.event.post(pygame.event.Event(pygame.USEREVENT, name = "menus"))
+        self.game_state == "quitting"
     def set_input_mode(self, mode):
         self.controller_count = pygame.joystick.get_count()
         if mode == "controller" and self.input_mode != "controller" and self.controller_count > 0:
@@ -116,6 +125,7 @@ class ClientClass():
     def get_game_input(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                self.disconnect()
                 self.quit()
             elif event.type == pygame.VIDEORESIZE:
                 pass #Add manual resize ability
@@ -168,7 +178,7 @@ class ClientClass():
                 if self.player.inventory.show_full.get():
                     self.change_inventory_state(False)
                 else:
-                    self.quit()
+                    self.disconnect()
         if self.input_mode == 'keyboard': #Keyboard only event checks
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_w or event.key == pygame.K_SPACE:
@@ -397,6 +407,10 @@ class ClientClass():
                         self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)
                     else:
                         self.graphics.create_display(self.graphics.screen.get_size())
+                elif command_list[1] == "mute":
+                    self.sound.mute()
+                elif command_list[1] == "unmute":
+                    self.sound.unmute()
                 elif command_list[1] == "music":
                     if command_list[2] == "start":
                         if len(command_list) >= 4:
