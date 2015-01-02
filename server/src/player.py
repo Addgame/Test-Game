@@ -3,7 +3,7 @@ import items
 from entity import *
 from inventory import *
 from gamemodeData import *
-
+from colors import *
 import pickle
 
 class PlayerClass(EntityClass, InventoryOwnerClass):

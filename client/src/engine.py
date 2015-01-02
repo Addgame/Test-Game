@@ -78,7 +78,8 @@ class Game():
                 self.menu.empty()
                 MainMenu(self.menu)
             self.game_client.game_loop()
-            self.loop_call = reactor.callLater(1./self.game_client.options["fps"], self.loop)
+            #self.loop_call = reactor.callLater(1./self.game_client.options["fps"], self.loop)
+            self.loop_call = reactor.callLater(0, self.loop)
         elif self.state == "menus":
             for event in pygame.event.get():
                 if event.type == pygame.USEREVENT and (event.name == "login" or event.name == "main_menu"):
@@ -104,6 +105,7 @@ class Game():
                 else:
                     self.menu.handle_event(event)
             self.temp_screen.fill(WHITE)
+            self.screen.fill(WHITE)
             self.temp_screen.blit(self.bg_image, (0,0))
             self.menu.draw()
             #pygame.transform.scale(self.temp_screen, self.screen.get_size(), self.screen)
