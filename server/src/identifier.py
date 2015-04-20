@@ -13,4 +13,8 @@ class IdentifierGeneratorClass():
         self.used_identifiers.append(identifier)
         return identifier
     def release(identifier):
-        released = self.used_identifiers.pop(identifier)
+        try:
+            self.used_identifiers.remove(identifier)
+            return True
+        except:
+            return False
