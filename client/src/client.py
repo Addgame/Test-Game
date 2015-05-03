@@ -401,7 +401,10 @@ class ClientClass():
                 elif command_list[1] == "show_hud":
                     self.show_hud = string_to_boolean(command_list[2])
                 elif command_list[1] == "show_fps":
-                    self.show_fps = string_to_boolean(command_list[2])
+                    if len(command_list) > 2:
+                        self.show_fps = string_to_boolean(command_list[2])
+                    else:
+                        self.message_group.add_message(MessageClass("Show FPS: " + str(self.show_fps)))
                 elif command_list[1] == "fullscreen":
                     if string_to_boolean(command_list[2]):
                         self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)

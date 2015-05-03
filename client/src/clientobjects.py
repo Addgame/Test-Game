@@ -310,7 +310,7 @@ class ClientMapClass():
     def create_image(self):
         self.image = pygame.surface.Surface((512, 512), pygame.SRCALPHA)
         if not self.client.colored_maps:
-            self.image.fill((255, 255, 255, 255))
+            self.image.fill((255, 255, 255, 0))
         else:
             self.image.fill((random.randint(0,255), random.randint(0,255), random.randint(0,255), 127))
         for block in self.blocks:

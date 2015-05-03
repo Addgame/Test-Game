@@ -48,6 +48,8 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             temp_rect = self.rect.copy()
             time = 1./30
             y_acceleration = 9.8
+            if self.velocity[1] <= 0:
+                self.fall_length = 0
             if self.velocity[1] >= 0 and self.movement["jump"]:
                 self.set_jump(False)
                 self.server.network_data_handler.send_packet_all("player_data_movement", self.name, self.movement)
@@ -56,6 +58,7 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             y_dist = self.velocity[1] * time + (.5) * y_acceleration * (time ** 2)
             self.velocity[1] = self.velocity[1] + y_acceleration * time
             y_dist = y_dist * 100 + 2
+            #y_dist = y_dist + 2
             if y_dist > 30:
                 y_dist = 30
             self.rect.y += y_dist
@@ -72,8 +75,8 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                     self.on_ground = True
                     self.can_jump = True
                     self.num_jump = 0
-                    if self.fall_length > 25:
-                        self.take_damage(int((self.fall_length - 25) * .75), "fall")
+                    if self.velocity[1] > 9: #self.fall_length > 25:
+                        self.take_damage(int(self.velocity[1] - 8) * 5, "fall")
                     self.fall_length = 0
                 elif self.velocity[1] < 0:
                     self.rect.top = cblock.rect.bottom
@@ -322,7 +325,6 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
                     self.velocity[1] -= 6
                 else:
                     self.velocity[1] -= 5
-                self.fall_length = 0
                 self.num_jump += 1
                 if self.num_jump == self.num_jump_limit:
                     self.can_jump = False

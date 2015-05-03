@@ -27,6 +27,7 @@ class GraphicsEngineClass():
         self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         self.death_screen.fill(REDFADE)
         self.connection_lost_screen = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
+        self.sky_image = pygame.transform.scale(pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\sky.png"), self.screen.get_size())
         try:
             self.client.message_group.update_display = True
             self.client.message_group.update_location = True
@@ -41,7 +42,7 @@ class GraphicsEngineClass():
             self.screen.blit(self.connection_lost_screen, self.connection_lost_screen.get_rect( \
                 center=(self.screen.get_rect().centerx, self.screen.get_rect().centery-10)))
         if self.client.show_fps:
-            self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, BLUE), [self.screen.get_width() - 63,0])
+            self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, RED), [self.screen.get_width() - 63,0])
         pygame.display.update()
         self.client.clock.tick()
     def draw_game_screen(self):
@@ -76,7 +77,8 @@ class GraphicsEngineClass():
             #self.screen.blit(self.client.player.current_img, self.client.player.location)
             self.screen.blit(self.client.player.current_img, [self.screen.get_rect().centerx - 15, self.screen.get_rect().centery - 15])
     def draw_background(self):
-        self.screen.fill(WHITE)
+        #self.screen.fill(WHITE)
+        self.screen.blit(self.sky_image, [0,0])
     def draw_messages(self):
         self.client.message_group.update()
         self.client.message_group.draw()
