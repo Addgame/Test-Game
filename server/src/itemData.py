@@ -8,7 +8,7 @@ block_data = { \
 }
 
 projectile_data = {\
-"missile":{"size":[16,10] , "damage": 40}
+"missile":{"size":[16,10] , "damage": 40, "speed": 30}
 }
 
 item_data = {\

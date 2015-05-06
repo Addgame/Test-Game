@@ -1,5 +1,6 @@
 import pygame, math
 from items import *
+from itemData import *
 
 class InventoryClass():
     def __init__(self, server, owner, num_slot, row_length):
@@ -70,7 +71,9 @@ class PlayerInventoryClass(InventoryClass):
                         x_factor = 1
                     else:
                         x_factor = -1
-                    projectile = self.selected_item.launch([self.owner.rect.centerx + 17 * x_factor, self.owner.rect.centery], [30 * x_factor, 1])
+                    launch_speed = projectile_data[self.selected_item.internal_name]["speed"]
+                    angle = math.atan2(location[1] - self.owner.rect.y, location[0] - self.owner.rect.x)
+                    projectile = self.selected_item.launch([self.owner.rect.centerx + 17 * x_factor, self.owner.rect.centery], [30 * math.cos(angle), 30 * math.sin(angle)])
                     self.reduce_item_stack(self.selected_slot)
                     self.update_selected(self.selected_slot)
     def stop_use_item(self, type, location):

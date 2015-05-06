@@ -15,7 +15,7 @@ class BaseItemClass(pygame.sprite.Sprite):
     def convert_dict(self):
         return {"type": self.type, "count": self.count,"internal_name": self.internal_name, "display_name": self.display_name}
     def reduce_count(self, number = 1):
-        if type != "NONE":
+        if self.type != "NONE":
             self.count -= number
             return True
         return False

@@ -40,7 +40,7 @@ class ClientClass():
         self.previous_messages = []
         self.prev_message_num = -1
         self.maps = ClientMapGroup(self)
-        self.NONE_ITEM = ClientBaseItemClass(self, 1, "NONE_ITEM", "NONEITEM")
+        self.NONE_ITEM = ClientBaseItemClass(self, 1, "NONE_ITEM", "NONE_ITEM")
         self.player = ClientPlayerClass(self, self.player_name)
         self.cursor = CursorClass(self)
         self.network_data_handler = DataHandler(self)
@@ -84,15 +84,6 @@ class ClientClass():
             options_file.close()
         except:
             self.log("Custom options could not be loaded! Using default options!", "ERROR")
-    def option_string_to_list(self, string):
-        list = []
-        string = string.lstrip("[")
-        string = string.rstrip("]")
-        str_list = string.split(",")
-        for item in str_list:
-            item.strip()
-            list.append(int(item))
-        return list
     def log(self, message, type = "INFO"):
         time = str(datetime.datetime.now())
         time_stamp = '[' + time.split('.')[0] + '] [' + type + ']: '
