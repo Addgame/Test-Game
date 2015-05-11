@@ -42,6 +42,7 @@ class ClientClass():
         self.maps = ClientMapGroup(self)
         self.NONE_ITEM = ClientBaseItemClass(self, 1, "NONE_ITEM", "NONE_ITEM")
         self.player = ClientPlayerClass(self, self.player_name)
+        self.movement_changes = {}
         self.cursor = CursorClass(self)
         self.network_data_handler = DataHandler(self)
         self.network_connector = None
@@ -59,6 +60,9 @@ class ClientClass():
         if self.connected:
             self.get_game_input()
         self.graphics.draw_screen()
+        if self.movement_changes:
+            self.network_data_handler.send_packet("player_movement_input", self.movement_changes)
+            self.movement_changes = {}
         if self.game_state != "quitting":
             pass
             #self.delayed_call = reactor.callLater(1/float(self.options["fps"]), self.game_loop)
@@ -401,6 +405,8 @@ class ClientClass():
                         self.graphics.create_display(self.graphics.screen.get_size(), pygame.FULLSCREEN)
                     else:
                         self.graphics.create_display(self.graphics.screen.get_size())
+                elif command_list[1] == "texture_dir":
+                    self.graphics.set_texture_directory(command_list[2])
                 elif command_list[1] == "mute":
                     self.sound.mute()
                 elif command_list[1] == "unmute":
@@ -419,14 +425,22 @@ class ClientClass():
                 self.log("Client Command Execution Failed: " + text, "ERROR")
         return value
     def set_move(self, value, direction):
-        self.network_data_handler.send_packet("player_movement_input", {direction: value})
+        if self.player.movement[direction] != value:
+            self.player.movement[direction] = value
+            self.movement_changes[direction] = value
     def set_crouch(self, value):
-        self.network_data_handler.send_packet("player_movement_input", {"crouch": value})
+        if self.player.movement["crouch"] != value:
+            self.player.movement["crouch"] = value
+            self.movement_changes["crouch"] = value
     def set_sprint(self, value):
-        self.network_data_handler.send_packet("player_movement_input", {"sprint": value})
+        if self.player.movement["sprint"] != value:
+            self.player.movement["sprint"] = value
+            self.movement_changes["sprint"] = value
     def set_jump(self, value):
-        self.network_data_handler.send_packet("player_movement_input", {"jump": value})
-    def set_all_movement(self, value):
+        if self.player.movement["jump"] != value:
+            self.player.movement["jump"] = value
+            self.movement_changes["jump"] = value
+    def set_all_movement(self, value): #Even used?
         self.network_data_handler.send_packet("player_movement_input", \
             {"left": value, "right": value, "crouch": value, "sprint": value, "jump": value})
     def respawn(self):

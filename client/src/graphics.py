@@ -6,10 +6,7 @@ class GraphicsEngineClass():
     def __init__(self, client, screen, size, texture_directory = "default"):
         self.client = client
         self.texture_dir = texture_directory
-        self.load_projectile_textures()
-        self.load_hud_textures()
-        self.load_block_textures()
-        self.load_item_textures()
+        self.load_all_textures()
         self.load_player_skins("_all")
         self.fonts = { \
             "corbel-15": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 15), \
@@ -123,6 +120,14 @@ class GraphicsEngineClass():
     def update_player_skins(self):
         for player in self.client.players:
             player.update_image()
+    def set_texture_directory(self, directory):
+        self.texture_dir = directory
+        self.load_all_textures()
+    def load_all_textures(self):
+        self.load_projectile_textures()
+        self.load_hud_textures()
+        self.load_block_textures()
+        self.load_item_textures()
     def load_block_textures(self):
         self.block_textures = {"dirt": None, "dirt_wall": None, "grass": None, "spike": None, "stone": None, "test_block": None}
         for key in self.block_textures:
