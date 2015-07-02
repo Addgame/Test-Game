@@ -110,6 +110,8 @@ class PlayerClass(EntityClass, InventoryOwnerClass):
             x_dist = self.velocity[0] * time + (.5) * x_acceleration * (time ** 2)
             self.velocity[0] = self.velocity[0] + x_acceleration * time
             x_dist = x_dist * 100
+            if not self.on_ground:
+                x_dist *= .65
             self.rect.x += x_dist
             collisions = self.check_collisions("damaging_rect")
             for dblock in collisions:

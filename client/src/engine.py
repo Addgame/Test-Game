@@ -16,7 +16,7 @@ class Game():
         self.connection_info = {"ip":"", "port":""}
         pygame.key.set_repeat(500, 50)
     def load_options(self):
-        self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720]}
+        self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720], "show_fps": False}
         try:
             options_file = open("..\\data\\options.txt")
             self.options = json.load(options_file)
@@ -47,7 +47,8 @@ class Game():
     def quit(self):
         reactor.stop()
     def run(self):
-        self.bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\main_menu_bg.png")
+        #self.bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\main_menu_bg.png")
+        self.bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\loading_screen.png")
         self.clock = pygame.time.Clock()
         self.menu = Container(self.temp_screen)
         try:
@@ -85,9 +86,11 @@ class Game():
                 if event.type == pygame.USEREVENT and (event.name == "login" or event.name == "main_menu"):
                     if event.name == "login":
                         self.login_info = event.data
+                    self.bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\main_menu_bg.png")
                     self.menu.empty()
                     MainMenu(self.menu)
                 elif event.type == pygame.USEREVENT and event.name == "logout":
+                    self.bg_image = pygame.image.load("..\\data\\textures\\packs\\default\\loading_screen.png")
                     self.menu.empty()
                     LoginMenu(self.menu, self.login_info["username"], self.login_info["password"])
                 elif event.type == pygame.USEREVENT and event.name == "play":
@@ -108,8 +111,9 @@ class Game():
             self.screen.fill(WHITE)
             self.temp_screen.blit(self.bg_image, (0,0))
             self.menu.draw()
+            pygame.transform.smoothscale(self.temp_screen, self.screen.get_size(), self.screen)
             #pygame.transform.scale(self.temp_screen, self.screen.get_size(), self.screen)
-            self.screen.blit(self.temp_screen, (0,0))
+            #self.screen.blit(self.temp_screen, (0,0))
             pygame.display.update()
             self.clock.tick()
             self.loop_call = reactor.callLater(1./30, self.loop)

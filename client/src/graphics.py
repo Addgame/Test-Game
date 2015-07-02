@@ -38,7 +38,7 @@ class GraphicsEngineClass():
             self.screen.fill(BLACK)
             self.screen.blit(self.connection_lost_screen, self.connection_lost_screen.get_rect( \
                 center=(self.screen.get_rect().centerx, self.screen.get_rect().centery-10)))
-        if self.client.show_fps:
+        if self.client.options["show_fps"]:
             self.screen.blit(self.fonts["corbel-15"].render("FPS: {:.1f}".format(self.client.clock.get_fps()), True, RED), [self.screen.get_width() - 63,0])
         pygame.display.update()
         self.client.clock.tick()

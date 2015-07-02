@@ -15,7 +15,7 @@ class ProjectileClass(EntityClass):
         temp_rect = self.rect.center
         self.rect.x += self.velocity[0]
         self.rect.y += self.velocity[1]
-        if self.rect.x > 1430 or self.rect.x < -64 or self.rect.y > 832 or self.rect.y < -64:
+        if self.rect.x > 1430 or self.rect.x < -64 or self.rect.y < -64:
             self.delete()
             return
         player_collisions = pygame.sprite.spritecollide(self, self.server.players, False)

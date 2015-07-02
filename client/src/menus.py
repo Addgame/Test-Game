@@ -6,11 +6,11 @@ from colors import *
 
 class LoginMenu():
     def __init__(self, container, username = "", password = ""):
-        username_field = InputBox(username, max_length = 24, location = [850, 300], container = container, focused = True)
-        password_field = PasswordInputBox(password, max_length = 24, location = [850, 350], container = container)
-        login_btn = Button("Log In", location = [930, 400], container = container)
+        username_field = InputBox(username, max_length = 24, location = [503, 350], container = container, focused = True)
+        password_field = PasswordInputBox(password, max_length = 24, location = [503, 400], container = container)
+        login_btn = Button("Log In", location = [583, 450], container = container)
         login_btn.attach(login, username_field, password_field)
-        quit_btn = Button("Quit", location = [941, 440], container = container)
+        quit_btn = Button("Quit", location = [594, 490], container = container)
         quit_btn.attach(quit)
         #random_text = Text("RANDOM TEXT", location = [900, 500], container = container, text_color = BLUE)
 
@@ -37,7 +37,7 @@ class ConnectMenu():
 
 class OptionsMenu():
     def __init__(self, container, options):
-        pass
+        title_text = Text("Options", location = [602, 265], font_size = 22, container = container)
 
 def print_ln(value):
     print(value)

@@ -42,8 +42,14 @@ class Button(GuiObject):
 class ToggleButton(Button):
     def __init__(self, text = "", **params):
         Button(text, **params)
-        self.text
+        self.choices
 
 class CheckBox(GuiObject):
     def __init__(self, checked = False, **params):
         self.checked = checked
+        size = params.get("size", 20)
+##        self.text = params.get("text", "")
+##        if self.text:
+##            pass
+    def update_image(self):
+        pass

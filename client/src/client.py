@@ -13,9 +13,8 @@ class ClientClass():
         self.colored_maps = False
         self.show_hud = True
         self.show_list = False
-        self.show_fps = False
         self.player_name = name
-        self.password = password
+        self.password = str(password.__hash__())
         self.server_type = server_type
         self.game_state = "login"
         self.version = version
@@ -67,7 +66,7 @@ class ClientClass():
             pass
             #self.delayed_call = reactor.callLater(1/float(self.options["fps"]), self.game_loop)
     def load_options(self):
-        self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720]}
+        self.options = {"message_limit": 5, "sound_volume": 1.0, "music_volume": .3, "fps": 30.0, "resolution": [1280, 720], "show_fps": False}
         try:
             options_file = open("..\\data\\options.txt")
             options_list = options_file.read().split("\n")
