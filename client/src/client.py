@@ -8,7 +8,54 @@ from utils import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 class ClientClass():
-    def __init__(self, name, password, server_type, version, options = None, screen = None, debug = False):
+    def __init__(self, server_type):
+        self.version = "0.2.0"
+        self.log_file = open("..\\data\\client_log.txt", 'a')
+        self.load_options()
+        self.state = "menus"
+        self.login_info = {"username":"", "password":""}
+        self.connection_info = {"ip":"", "port":""}
+        pygame.key.set_repeat(500, 50)
+        self.debug = debug
+        self.colored_maps = False
+        self.show_hud = True
+        self.show_list = False
+        self.player_name = ""
+        self.server_type = server_type
+        self.log("Game Client Started")
+        self.mouse_visible = False
+        self.input_mode = None
+        self.set_input_mode("keyboard") #sets to keyboard
+        #self.set_input_mode("controller") #attempts to set to controller if possible
+        self.clock = pygame.time.Clock()
+        self.sound = SoundEngineClass(self)
+        self.graphics = GraphicsEngineClass(self, screen, self.options["resolution"])
+        self.players = None
+        self.projectiles = None
+        self.message_group = None
+        self.chat_box = None
+        self.previous_messages = None
+        self.prev_message_num = None
+        self.maps = None
+        self.NONE_ITEM = None
+        self.player = None
+        self.movement_changes = None
+        self.cursor = None
+        self.network_data_handler = None
+        self.network_connector = None
+        self.network_factory = None
+        self.network_protocol = None
+        self.connected = False
+        self.disconnecting = False
+    def a__init__(self, server_type, version, options = None, screen = None, debug = False):
+        self.version = "0.2.0"
+        self.log_file = open("..\\data\\client_log.txt", 'a')
+        self.load_options()
+##        self.create_display(self.options["resolution"])
+        self.state = "menus"
+        self.login_info = {"username":"", "password":""}
+        self.connection_info = {"ip":"", "port":""}
+        pygame.key.set_repeat(500, 50)
         self.debug = debug
         self.colored_maps = False
         self.show_hud = True
@@ -17,12 +64,6 @@ class ClientClass():
         self.password = str(password.__hash__())
         self.server_type = server_type
         self.game_state = "login"
-        self.version = version
-        self.log_file = open("..\\data\\client_log.txt", 'a')
-        if not options:
-            self.load_options()
-        else:
-            self.options = options
         self.log("Game Client Started")
         self.mouse_visible = False
         self.input_mode = None
@@ -50,9 +91,20 @@ class ClientClass():
         self.connected = False
         self.disconnecting = False
     def start_game_connection(self, ip, port = 8007, timeout = 15):
-        factory = GameClientFactory(self)
-        self.network_connector = reactor.connectTCP(ip, int(port), factory, timeout)
-        self.network_factory = factory
+        self.players = ClientPlayerGroup(self)
+        self.projectiles = ClientProjectileGroup(Self)
+        self.message_group = MessageGroupClass(self)
+        self.chat_box = ChatBoxClass(self)
+        self.previous_messages = []
+        self.prev_message_num = -1
+        self.maps = ClientMapGroup(self)
+        self.NONE_ITEM = ClientBaseItemClass(self, 1, "NONE_ITEM", "NONE_ITEM")
+        self.player = ClientPlayerClass(self, self.player_name)
+        self.movement_changes = {}
+        self.cursor = Cursor(self)
+        self.network_data_handler = DataHandler(self)
+        self.network_factory = GameClientFactory(self)
+        self.network_connector = reactor.connectTCP(ip, int(port), self.network_factory, timeout)
         self.network_protocol = factory.protocol
         #reactor.callLater(1, self.game_loop)
     def game_loop(self):
@@ -345,6 +397,7 @@ class ClientClass():
                     set_clipboard(self.chat_box.text)
                     self.chat_box.text = ""
                     self.chat_box.pos = 0
+                    changed = True
                 else:
                     if len(self.chat_box.text) < self.chat_box.char_limit:
                         character = str(event.unicode)
@@ -444,150 +497,6 @@ class ClientClass():
             {"left": value, "right": value, "crouch": value, "sprint": value, "jump": value})
     def respawn(self):
         self.network_data_handler.send_packet("respawn")
-
-class MessageClass(): #DO BETTER REWRITE OF MESSAGES
-    def __init__(self, text, color = BLACK, size = 15, font = 'corbel'):
-        self.text = text
-        self.color = color
-        if self.text.find("%y") > 0:
-            self.color = YELLOW
-            self.text = self.text.replace("%y", "")
-        elif self.text.find("%b") > 0:
-            self.color = BLUE
-            self.text = self.text.replace("%b", "")
-        elif self.text.find("%r") > 0:
-            self.color = RED
-            self.text = self.text.replace("%r", "")
-        elif self.text.find("%g") > 0:
-            self.color = GREEN
-            self.text = self.text.replace("%g", "")
-        self.time = -1
-        self.font = font + '-' + str(size)
-        self.image = None
-        self.draw_location = None
-    def draw(self, screen, location = None):
-        if location == None:
-            location = self.draw_location
-        screen.blit(self.image, location)
-
-class MessageGroupClass():
-    def __init__(self, client):
-        self.client = client
-        self.message_limit = int(self.client.options["message_limit"])
-        self.messages = []
-        self.fonts = self.client.graphics.fonts
-        self.show_all = Toggle(False)
-        self.update_display = False
-        self.update_location = False
-    def add_message(self, message):
-        self.create_msg_image(message)
-        time = int(self.client.clock.get_fps() * 10) #TODO: FIND EASIER WAY TO DO THIS
-        if time < 300:
-            time = 300
-        message.time = time
-        self.messages.append(message)
-        self.update_display = True
-        self.update_location = True
-        if len(self.messages) > self.message_limit:
-            removed_message = self.messages.pop(0)
-    def create_msg_image(self, message):
-        message.image = self.fonts[message.font].render(message.text, True, message.color)
-        message.draw_location = [5, None]
-    def update(self):
-        if self.update_display:
-            need_update = False
-            for message in self.messages:
-                if message.time > -1:
-                    message.time -= 1
-                    need_update = True
-                if self.update_location:
-                    message.draw_location[1] = (self.client.graphics.screen.get_height() - 55) - (25*((len(self.messages)-1)-self.messages.index(message)))
-            if need_update == False:
-                self.update_display = False
-            if self.update_location == True:
-                self.update_location = False
-    def clear(self):
-        self.messages = []
-        self.update_display = False
-        self.update_location = False
-    def draw(self):
-        for message in self.messages:
-            if self.show_all.get() or message.time > -1:
-                message.draw(self.client.graphics.screen)
-
-class ChatBoxClass():
-    def __init__(self, client):
-        self.client = client
-        self.show = Toggle(False)
-        self.text = ""
-        self.pos = 0
-        self.location = []
-        self.char_limit = 75
-        self.image = None
-        self.update_location()
-        self.make_image()
-    def update_location(self):
-        self.location = [5, self.client.graphics.screen.get_height() - 30]
-    def make_image(self):
-        color = BLACK
-        value = self.text[:self.pos] + "|" + self.text[self.pos:]
-        self.image = self.client.graphics.fonts["corbel-15"].render("> " + value, True, color)
-    def send(self):
-        if not self.client.check_commands(self.text):
-            self.client.network_data_handler.send_packet("player_message", self.text)
-        self.text = ""
-        self.pos = 0
-        self.make_image()
-        self.client.change_input_type()
-    def draw(self):
-        if self.show.get():
-            self.client.graphics.screen.blit(self.image, self.location)
-
-class CursorClass():
-    def __init__(self, client):
-        self.client = client
-        self.image = self.client.graphics.get_cursor_textures()
-        self.rect = self.image.get_rect(center=self.client.graphics.screen.get_rect().center)
-        self.point_rect = pygame.Rect(self.rect.center, (1, 1))
-        self.update_point_rect()
-        self.fine_adjust = Toggle(False)
-        self.adjust_values = [8, 25]
-    def update(self, x_adjust, y_adjust):
-        if self.client.input_mode == 'keyboard':
-            self.rect.x = x_adjust
-            self.rect.y = y_adjust
-        elif self.client.input_mode == 'controller':
-            if x_adjust > .15 or x_adjust < -.15:
-                if self.fine_adjust.get():
-                    x_change = x_adjust * self.adjust_values[0]
-                else:
-                    x_change = x_adjust * self.adjust_values[1]
-            else:
-                x_change = 0
-            if y_adjust > .15 or y_adjust < -.15:
-                if self.fine_adjust.get():
-                    y_change = y_adjust * self.adjust_values[0]
-                else:
-                    y_change = y_adjust * self.adjust_values[1]
-            else:
-                y_change = 0
-            self.rect.x += x_change
-            self.rect.y += y_change
-            if self.rect.x < 0:
-                self.rect.x = 0
-            elif self.rect.x > self.client.graphics.screen.get_width():
-                self.rect.x = self.client.graphics.screen.get_width() 
-            if self.rect.y < 0:
-                self.rect.y = 0
-            elif self.rect.y > self.client.graphics.screen.get_height():
-                self.rect.y = self.client.graphics.screen.get_height()
-        self.update_point_rect()
-    def update_point_rect(self):
-        self.point_rect.x = self.rect.x + 8
-        self.point_rect.y = self.rect.y + 8
-    def get_point(self):
-        return [self.point_rect.centerx - (self.client.graphics.screen.get_rect().centerx - 15) + self.client.player.rect.x,\
-            self.point_rect.centery - (self.client.graphics.screen.get_rect().centery - 15) + self.client.player.rect.y]
 
 if __name__ == '__main__':
     pygame.init()

@@ -3,8 +3,10 @@ from colors import *
 from clientobjects import *
 
 class GraphicsEngineClass():
-    def __init__(self, client, screen, size, texture_directory = "default"):
+    def __init__(self, client, texture_directory = "default"):
         self.client = client
+        info_obj = pygame.display.Info()
+        self.monitor_res = (info_obj.current_w, info_obj.current_h)
         self.texture_dir = texture_directory
         self.load_all_textures()
         self.load_player_skins("_all")
@@ -13,24 +15,23 @@ class GraphicsEngineClass():
             "corbelb-15": pygame.font.Font("..\\data\\fonts\\corbelb.ttf", 15), \
             "corbel-25": pygame.font.Font("..\\data\\fonts\\corbel.ttf", 25), \
             }
-        if screen != None:
-            size = screen.get_size()
-        self.create_display(size)
+        #self.create_display(size)
         self.client.clock.tick(float(self.client.options["fps"]))
     def create_display(self, size, flags = 0):
         self.screen = pygame.display.set_mode(size, flags)
         pygame.display.set_caption("Dungeon Derps v." + self.client.version)
         pygame.display.set_icon(pygame.image.load("..\\data\\textures\\icon.png"))
-        self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        self.death_screen.fill(REDFADE)
-        self.connection_lost_screen = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
-        self.sky_image = pygame.transform.scale(pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\sky.png"), self.screen.get_size())
-        try:
-            self.client.message_group.update_display = True
-            self.client.message_group.update_location = True
-            self.client.chat_box.update_location()
-        except: #MessageGroup instance not created yet
-            pass
+##        self.death_screen = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+##        self.death_screen.fill(REDFADE)
+##        self.connection_lost_screen = self.fonts["corbel-25"].render("Lost Connection to Server!", True, WHITE)
+##        self.sky_image = pygame.transform.scale(pygame.image.load("..\\data\\textures\\packs\\" + self.texture_dir + "\\sky.png"), self.screen.get_size())
+##        try:
+##            self.client.message_group.update_display = True
+##            self.client.message_group.update_location = True
+##            self.client.chat_box.update_location()
+##        except: #MessageGroup instance not created yet
+##            pass
+    def 
     def draw_screen(self):
         if self.client.game_state == "ingame":
             self.draw_game_screen()

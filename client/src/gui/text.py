@@ -15,7 +15,7 @@ class Text(GuiObject):
     def update_image(self):
         self.image = pygame.Surface(self.rect.size, pygame.SRCALPHA)
         if self.bg_color:
-            self.image.fill(bg_color)
+            self.image.fill(self.bg_color)
         text_image = self.font.render(self.text, True, self.text_color)
         #Add border?
         self.image.blit(text_image, (0, 1))

@@ -35,5 +35,6 @@ class ProjectileClass(EntityClass):
     def convert_dict(self):
         return {"location": [self.rect.x, self.rect.y], "type": self.type, "velocity": self.velocity}
     def delete(self):
+        self.server.identifier_generator.release(self.identifier)
         self.kill()
         self.server.network_data_handler.send_packet_all("remove_projectile", self.identifier)
