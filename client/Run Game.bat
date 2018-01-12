@@ -1,4 +1,4 @@
 @ECHO off
 cd src
-main.py
+python main.py
 PAUSE

@@ -6,29 +6,38 @@ import json
 from clientobjects import ClientBlockItemClass
 from colors import *
 
+
 class GameClientProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
+
     def lineReceived(self, line):
         self.factory.client.network_data_handler.receive_data(line)
+
     def connectionMade(self):
-        self.factory.client.network_data_handler.send_packet("login", self.factory.client.player_name, self.factory.client.password, self.factory.client.version)
+        self.factory.client.network_data_handler.send_packet("login", self.factory.client.player_name,
+                                                             self.factory.client.password, self.factory.client.version)
+
 
 class GameClientFactory(ClientFactory):
     def __init__(self, client):
         self.client = client
         self.protocol = GameClientProtocol(self)
+
     def startedConnecting(self, connector):
         self.client.log("Connecting to server!")
+
     def buildProtocol(self, addr):
         self.client.log("Connected to server: " + addr.host + ":" + str(addr.port))
         self.client.connected = True
         return self.protocol
+
     def clientConnectionFailed(self, connector, reason):
         self.client.log("Could not connect to server!", "ERROR")
         if self.client.debug:
             self.client.log("REASON: " + str(reason), "DEBUG")
         self.client.disconnect()
+
     def clientConnectionLost(self, connector, reason):
         self.client.log("Disconnected from server!")
         if self.client.debug:
@@ -37,17 +46,21 @@ class GameClientFactory(ClientFactory):
         if not self.client.disconnecting:
             self.client.game_state = "connection_lost"
 
+
 class DataHandler():
     def __init__(self, client):
         self.client = client
+
     def receive_data(self, encoded):
         data = base64.b64decode(encoded)
-        packet = json.loads(data)
+        packet = json.loads(data.decode())
         self.handle_packet(packet)
+
     def send_data(self, packet):
         data = json.dumps(packet)
-        encoded = base64.b64encode(data)
+        encoded = base64.b64encode(data.encode())
         self.client.network_protocol.sendLine(encoded)
+
     def handle_packet(self, packet):
         from client import MessageClass
         if self.client.debug:
@@ -126,17 +139,17 @@ class DataHandler():
             elif packet_type == "player_join":
                 name = packet["data"][0]
                 self.client.players.add_player(name)
-                message = MessageClass("{} has joined the server".format(name), color = BLUE)
+                message = MessageClass("{} has joined the server".format(name), color=BLUE)
                 self.client.message_group.add_message(message)
             elif packet_type == "player_leave":
                 name = packet["data"][0]
                 self.client.players.remove_player(name)
-                message = MessageClass("{} has left the server".format(name), color = RED)
+                message = MessageClass("{} has left the server".format(name), color=RED)
                 self.client.message_group.add_message(message)
             elif packet_type == "death":
                 if self.client.debug:
                     print("RECEIVED DEATH")
-                #self.client.players[self.client.player_name]["movement"]["dead"] = True
+                # self.client.players[self.client.player_name]["movement"]["dead"] = True
                 self.client.sound.play_sound("death")
             elif packet_type == "chat_message":
                 try:
@@ -151,8 +164,9 @@ class DataHandler():
                 self.client.sound.play_sound(packet["data"][0])
             else:
                 self.client.log("Unknown packet received!: " + packet_type, "WARN")
+
     def send_packet(self, type, *data):
         if self.client.debug:
             print("SENDING PACKET: ", type)
-        packet = {"type":type, "data":data}
+        packet = {"type": type, "data": data}
         self.send_data(packet)
